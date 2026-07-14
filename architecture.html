@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FashionConnect — System Architecture</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #08081a;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #canvas-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    padding: 16px 32px;
+    background: linear-gradient(180deg, rgba(8,8,26,0.95) 60%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #f472b6, #8b5cf6, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+  }
+  .header .subtitle {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 300;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .header-controls {
+    pointer-events: all;
+    display: flex;
+    gap: 8px;
+  }
+  .header-controls button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    transition: all 0.2s;
+  }
+  .header-controls button:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  /* Legend */
+  .legend {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 20px;
+    background: rgba(8,8,26,0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 24px;
+    border-radius: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Info Panel */
+  #info-panel {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 10;
+    background: rgba(8,8,26,0.9);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 16px 24px;
+    min-width: 280px;
+    max-width: 420px;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    text-align: center;
+  }
+  #info-panel.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #info-panel .ip-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  #info-panel .ip-category {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.4;
+    margin-bottom: 8px;
+  }
+  #info-panel .ip-desc {
+    font-size: 13px;
+    opacity: 0.65;
+    line-height: 1.5;
+  }
+
+  /* Loading */
+  .loading {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #08081a;
+    transition: opacity 0.8s;
+  }
+  .loading.hidden { opacity: 0; pointer-events: none; }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(139,92,246,0.15);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    .header { padding: 12px 16px; flex-direction: column; gap: 8px; }
+    .header h1 { font-size: 16px; }
+    .legend { gap: 10px; padding: 8px 14px; }
+    .legend-item { font-size: 10px; }
+    #info-panel { min-width: 200px; max-width: 300px; padding: 12px 16px; bottom: 80px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="loading-spinner"></div>
+</div>
+
+<div class="header">
+  <div>
+    <h1>FashionConnect</h1>
+    <div class="subtitle">System Architecture · Multi-Vendor Marketplace</div>
+  </div>
+  <div class="header-controls">
+    <button onclick="resetCamera()">⟲ إعادة تعيين</button>
+    <button onclick="toggleAutoRotate()">⟳ تلقائي</button>
+  </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<div id="info-panel">
+  <div class="ip-name" id="ip-name"></div>
+  <div class="ip-category" id="ip-category"></div>
+  <div class="ip-desc" id="ip-desc"></div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span>Client</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Gateway</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#10b981"></span>Business</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Communication</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span>Financial</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>Admin</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#ec4899"></span>Infra</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#d946ef"></span>Broker</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#6366f1"></span>Data</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// --- Setup ---
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+camera.position.set(18, 14, 20);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(container.clientWidth, container.clientHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.left = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+container.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.2;
+controls.minDistance = 8;
+controls.maxDistance = 45;
+controls.target.set(0, 2, 0);
+controls.maxPolarAngle = Math.PI / 2.1;
+
+// --- Lights ---
+const ambient = new THREE.AmbientLight(0x334466, 0.6);
+scene.add(ambient);
+
+const mainLight = new THREE.DirectionalLight(0xffeedd, 2.5);
+mainLight.position.set(15, 25, 10);
+mainLight.castShadow = true;
+scene.add(mainLight);
+
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.8);
+fillLight.position.set(-10, 5, -10);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xf472b6, 0.6);
+rimLight.position.set(-5, -10, 15);
+scene.add(rimLight);
+
+// --- Background stars ---
+const starsGeo = new THREE.BufferGeometry();
+const starCount = 2000;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 120;
+starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starsMat = new THREE.PointsMaterial({
+  color: 0x8888ff,
+  size: 0.12,
+  transparent: true,
+  opacity: 0.6,
+  sizeAttenuation: true,
+});
+scene.add(new THREE.Points(starsGeo, starsMat));
+
+// --- Ground grid ---
+const gridHelper = new THREE.GridHelper(40, 30, 0x333366, 0x222244);
+gridHelper.position.y = -3.5;
+scene.add(gridHelper);
+
+// --- Data Definitions ---
+const layers = {
+  client:   { y: 9, label: 'Client Layer' },
+  gateway:  { y: 6.5, label: 'API Gateway' },
+  services: { y: 3, label: 'Services' },
+  broker:   { y: 0, label: 'Message Broker' },
+  data:     { y: -3, label: 'Data Layer' },
+};
+
+const serviceDefs = [
+  // Client layer
+  { id: 'web',     name: 'Web App',      nameAr: 'تطبيق ويب',     layer: 'client', color: '#06b6d4', cat: 'Client',     x: -6, z: 0, desc: 'Next.js SSR مع دعم كامل للعربية والإنجليزية' },
+  { id: 'mobile',  name: 'Mobile App',   nameAr: 'تطبيق موبايل',  layer: 'client', color: '#06b6d4', cat: 'Client',     x: 0, z: 0, desc: 'React Native تطبيق للهواتف مع push notifications' },
+  { id: 'delivery-app', name: 'Delivery App', nameAr: 'تطبيق توصيل', layer: 'client', color: '#06b6d4', cat: 'Client', x: 6, z: 0, desc: 'تطبيق خاص بالـ couriers لإدارة المهام والتوصيل' },
+
+  // Gateway
+  { id: 'gateway', name: 'API Gateway',  nameAr: 'البوابة',       layer: 'gateway', color: '#8b5cf6', cat: 'Gateway',    x: 0, z: 0, desc: 'Kong — Rate limiting, Auth, Routing, Throttling' },
+
+  // Services - Row 1
+  { id: 'auth',    name: 'Auth',         nameAr: 'المصادقة',       layer: 'services', color: '#10b981', cat: 'Business',  x: -9, z: -4.5, desc: 'تسجيل الدخول، OTP، JWT، إدارة الأدوار والصلاحيات' },
+  { id: 'brand',   name: 'Brand',        nameAr: 'العلامات',       layer: 'services', color: '#10b981', cat: 'Business',  x: -4.5, z: -4.5, desc: 'إدارة العلامات التجارية، التوثيق، الاشتراكات' },
+  { id: 'product', name: 'Product',      nameAr: 'المنتجات',       layer: 'services', color: '#10b981', cat: 'Business',  x: 0, z: -4.5, desc: 'إدارة المنتجات، الفئات، المتغيرات، المخزون' },
+  { id: 'cart',    name: 'Cart',         nameAr: 'السلة',          layer: 'services', color: '#10b981', cat: 'Business',  x: 4.5, z: -4.5, desc: 'سلة تسوق متعددة العلامات التجارية' },
+  { id: 'order',   name: 'Order',        nameAr: 'الطلبات',        layer: 'services', color: '#10b981', cat: 'Business',  x: 9, z: -4.5, desc: 'إدارة الطلبات، الطلبات الفرعية، دورة حياة الطلب' },
+
+  // Services - Row 2
+  { id: 'payment', name: 'Payment',      nameAr: 'المدفوعات',      layer: 'services', color: '#f59e0b', cat: 'Financial', x: -9, z: 0, desc: 'Stripe, Paymob, COD, Fawry, تقسيط valU/Aman' },
+  { id: 'wallet',  name: 'Wallet',       nameAr: 'المحفظة',        layer: 'services', color: '#f59e0b', cat: 'Financial', x: -4.5, z: 0, desc: 'محفظة رقمية للمبالغ المستردة، نقاط الولاء' },
+  { id: 'delivery',name: 'Delivery',     nameAr: 'التوصيل',        layer: 'services', color: '#3b82f6', cat: 'Comm',      x: 0, z: 0, desc: 'إدارة شركات التوصيل، تعيين المندوبين، حساب الرسوم' },
+  { id: 'chat',    name: 'Chat',         nameAr: 'المحادثة',       layer: 'services', color: '#3b82f6', cat: 'Comm',      x: 4.5, z: 0, desc: 'محادثة فورية بين المستخدم والعلامات التجارية' },
+
+  // Services - Row 3
+  { id: 'notif',   name: 'Notification', nameAr: 'الإشعارات',      layer: 'services', color: '#3b82f6', cat: 'Comm',      x: 9, z: 0, desc: 'WhatsApp, SMS, Push, إيميل — أولوية واتساب لمصر' },
+  { id: 'search',  name: 'Search',       nameAr: 'البحث',          layer: 'services', color: '#ec4899', cat: 'Infra',     x: -9, z: 4.5, desc: 'Elasticsearch بحث نصي مع دعم اللغة العربية' },
+  { id: 'ranking', name: 'Ranking',      nameAr: 'الترتيب',        layer: 'services', color: '#ec4899', cat: 'Infra',     x: -4.5, z: 4.5, desc: 'خوارزمية ترتيب العلامات التجارية (عضوي + مدفوع)' },
+  { id: 'review',  name: 'Review',       nameAr: 'التقييمات',      layer: 'services', color: '#10b981', cat: 'Business',  x: 0, z: 4.5, desc: 'تقييمات المنتجات والعلامات التجارية مع الصور' },
+  { id: 'admin',   name: 'Admin',        nameAr: 'الإدارة',        layer: 'services', color: '#ef4444', cat: 'Admin',     x: 4.5, z: 4.5, desc: 'لوحة تحكم، تقارير، إدارة المحتوى، صلاحيات فرعية' },
+  { id: 'dispute', name: 'Dispute',      nameAr: 'النزاعات',       layer: 'services', color: '#ef4444', cat: 'Admin',     x: 9, z: 4.5, desc: 'إدارة النزاعات، استرداد الأموال، البلاغات' },
+
+  // Broker
+  { id: 'broker',  name: 'RabbitMQ',     nameAr: 'وسيط الرسائل',   layer: 'broker', color: '#d946ef', cat: 'Broker',     x: 0, z: 0, desc: 'Event Bus — أحداث غير متزامنة بين الخدمات' },
+
+  // Data layer
+  { id: 'pg',      name: 'PostgreSQL',   nameAr: 'بوستجريس',       layer: 'data', color: '#6366f1', cat: 'Data',      x: -9, z: 0, desc: 'البيانات العلائقية: المستخدمين، الطلبات، المالية' },
+  { id: 'mongo',   name: 'MongoDB',      nameAr: 'مونغو',          layer: 'data', color: '#6366f1', cat: 'Data',      x: -4.5, z: 0, desc: 'الكتالوج: المنتجات، الفئات، هيكل مرن' },
+  { id: 'redis',   name: 'Redis',        nameAr: 'ريدس',           layer: 'data', color: '#6366f1', cat: 'Data',      x: 0, z: 0, desc: 'تخزين مؤقت: session, cart, cache, pub/sub' },
+  { id: 'es',      name: 'Elasticsearch',nameAr: 'إيلاستيك',       layer: 'data', color: '#6366f1', cat: 'Data',      x: 4.5, z: 0, desc: 'بحث نصي كامل، سجلات، تحليلات' },
+  { id: 's3',      name: 'MinIO / S3',   nameAr: 'التخزين',        layer: 'data', color: '#6366f1', cat: 'Data',      x: 9, z: 0, desc: 'صور المنتجات، مستندات التحقق، ملفات الوسائط' },
+];
+
+// --- Create Nodes ---
+const nodes = {};
+const nodeGroup = new THREE.Group();
+scene.add(nodeGroup);
+
+const raycasterTargets = [];
+
+serviceDefs.forEach(def => {
+  const layer = layers[def.layer];
+  const y = layer.y;
+  const x = def.x || 0;
+  const z = def.z || 0;
+
+  const color = new THREE.Color(def.color);
+  const isGateway = def.layer === 'gateway';
+  const isBroker = def.layer === 'broker';
+  const isClient = def.layer === 'client';
+  const isData = def.layer === 'data';
+  const isService = def.layer === 'services';
+
+  let size, geo, mesh;
+
+  if (isClient || isGateway || isService) {
+    // Box
+    const w = isGateway ? 3.6 : 2.4;
+    const h = isGateway ? 1.6 : 1.2;
+    const d = isGateway ? 3.6 : 2.4;
+    geo = new THREE.BoxGeometry(w, h, d);
+  } else if (isBroker) {
+    // Octahedron for broker
+    geo = new THREE.OctahedronGeometry(2, 0);
+  } else if (isData) {
+    // Cylinder for databases
+    geo = new THREE.CylinderGeometry(1.2, 1.2, 1.6, 16);
+  }
+
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: color,
+    metalness: 0.3,
+    roughness: 0.2,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.3,
+    emissive: color,
+    emissiveIntensity: 0.08,
+    transparent: true,
+    opacity: 0.92,
+  });
+
+  mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+
+  if (isBroker) mesh.rotation.y = Math.PI / 4;
+
+  mesh.userData = { def, isBroker, isData, baseY: y };
+  nodeGroup.add(mesh);
+  raycasterTargets.push(mesh);
+
+  // Glow edge
+  const edgeMat = new THREE.MeshPhysicalMaterial({
+    color: color,
+    metalness: 0,
+    roughness: 0,
+    transparent: true,
+    opacity: 0.15,
+    emissive: color,
+    emissiveIntensity: 0.3,
+    side: THREE.BackSide,
+  });
+  const glowGeo = geo.clone();
+  const glow = new THREE.Mesh(glowGeo, edgeMat);
+  glow.scale.set(1.12, 1.12, 1.12);
+  glow.position.copy(mesh.position);
+  glow.userData.parentMesh = mesh;
+  nodeGroup.add(glow);
+
+  // Floor glow
+  const ringGeo = new THREE.RingGeometry(1.4, 2.2, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: 0.12,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(x, y - (isData ? 1 : 0.8) - 0.05, z);
+  nodeGroup.add(ring);
+
+  // Label
+  const labelDiv = document.createElement('div');
+  labelDiv.textContent = def.nameAr;
+  labelDiv.style.color = '#fff';
+  labelDiv.style.fontSize = isGateway ? '16px' : '13px';
+  labelDiv.style.fontWeight = '700';
+  labelDiv.style.fontFamily = 'Cairo, sans-serif';
+  labelDiv.style.textShadow = '0 2px 12px rgba(0,0,0,0.8)';
+  labelDiv.style.background = 'rgba(0,0,0,0.5)';
+  labelDiv.style.backdropFilter = 'blur(8px)';
+  labelDiv.style.padding = isGateway ? '6px 18px' : '4px 12px';
+  labelDiv.style.borderRadius = '8px';
+  labelDiv.style.border = '1px solid rgba(255,255,255,0.06)';
+  labelDiv.style.letterSpacing = '0.3px';
+  labelDiv.style.pointerEvents = 'none';
+  labelDiv.style.whiteSpace = 'nowrap';
+
+  if (isClient) {
+    labelDiv.style.fontSize = '15px';
+    labelDiv.style.background = 'rgba(6,182,212,0.2)';
+    labelDiv.style.border = '1px solid rgba(6,182,212,0.3)';
+  }
+  if (isGateway) {
+    labelDiv.style.background = 'rgba(139,92,246,0.2)';
+    labelDiv.style.border = '1px solid rgba(139,92,246,0.3)';
+  }
+  if (isBroker) {
+    labelDiv.style.background = 'rgba(217,70,239,0.2)';
+    labelDiv.style.border = '1px solid rgba(217,70,239,0.3)';
+  }
+  if (isData) {
+    labelDiv.style.fontSize = '12px';
+    labelDiv.style.background = 'rgba(99,102,241,0.2)';
+    labelDiv.style.border = '1px solid rgba(99,102,241,0.3)';
+  }
+
+  const label = new CSS2DObject(labelDiv);
+  const labelY = isClient ? y - 1.8 : isGateway ? y - 1.6 : isData ? y + 1.8 : y + 1.4;
+  label.position.set(x, labelY, z);
+  nodeGroup.add(label);
+
+  // English small label
+  const enDiv = document.createElement('div');
+  enDiv.textContent = def.name;
+  enDiv.style.color = 'rgba(255,255,255,0.3)';
+  enDiv.style.fontSize = '9px';
+  enDiv.style.fontFamily = 'Cairo, sans-serif';
+  enDiv.style.fontWeight = '400';
+  enDiv.style.textShadow = '0 2px 8px rgba(0,0,0,0.8)';
+  enDiv.style.letterSpacing = '0.5px';
+  enDiv.style.textTransform = 'uppercase';
+  enDiv.style.pointerEvents = 'none';
+  enDiv.style.whiteSpace = 'nowrap';
+  enDiv.style.textAlign = 'center';
+
+  const enLabel = new CSS2DObject(enDiv);
+  const enY = isClient ? y - 2.3 : isGateway ? y - 2.1 : isData ? y + 2.3 : y + 1.9;
+  enLabel.position.set(x, enY, z);
+  nodeGroup.add(enLabel);
+
+  nodes[def.id] = { mesh, def, glow, ring };
+});
+
+// --- Connections ---
+const connections = [
+  // Client → Gateway
+  { from: 'web', to: 'gateway' },
+  { from: 'mobile', to: 'gateway' },
+  { from: 'delivery-app', to: 'gateway' },
+
+  // Gateway → Services
+  { from: 'gateway', to: 'auth' },
+  { from: 'gateway', to: 'brand' },
+  { from: 'gateway', to: 'product' },
+  { from: 'gateway', to: 'cart' },
+  { from: 'gateway', to: 'order' },
+  { from: 'gateway', to: 'payment' },
+  { from: 'gateway', to: 'wallet' },
+  { from: 'gateway', to: 'delivery' },
+  { from: 'gateway', to: 'chat' },
+  { from: 'gateway', to: 'notif' },
+  { from: 'gateway', to: 'search' },
+  { from: 'gateway', to: 'ranking' },
+  { from: 'gateway', to: 'review' },
+  { from: 'gateway', to: 'admin' },
+  { from: 'gateway', to: 'dispute' },
+
+  // Services → Broker (all services connect to broker)
+  { from: 'auth', to: 'broker' },
+  { from: 'brand', to: 'broker' },
+  { from: 'product', to: 'broker' },
+  { from: 'cart', to: 'broker' },
+  { from: 'order', to: 'broker' },
+  { from: 'payment', to: 'broker' },
+  { from: 'wallet', to: 'broker' },
+  { from: 'delivery', to: 'broker' },
+  { from: 'chat', to: 'broker' },
+  { from: 'notif', to: 'broker' },
+  { from: 'search', to: 'broker' },
+  { from: 'ranking', to: 'broker' },
+  { from: 'review', to: 'broker' },
+  { from: 'admin', to: 'broker' },
+  { from: 'dispute', to: 'broker' },
+
+  // Broker → Data
+  { from: 'broker', to: 'pg' },
+  { from: 'broker', to: 'mongo' },
+  { from: 'broker', to: 'redis' },
+  { from: 'broker', to: 'es' },
+  { from: 'broker', to: 's3' },
+];
+
+const lineMat = new THREE.MeshPhysicalMaterial({
+  color: 0x4444aa,
+  transparent: true,
+  opacity: 0.15,
+  metalness: 0,
+  roughness: 0.5,
+});
+
+const lineGroup = new THREE.Group();
+scene.add(lineGroup);
+
+connections.forEach(conn => {
+  const fromNode = nodes[conn.from];
+  const toNode = nodes[conn.to];
+  if (!fromNode || !toNode) return;
+
+  const p1 = fromNode.mesh.position;
+  const p2 = toNode.mesh.position;
+  const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+  // Catmull-Rom curve with slight arc
+  const dy = Math.abs(p1.y - p2.y);
+  const arcH = Math.max(1, dy * 0.15);
+
+  const pts = [
+    p1.clone(),
+    new THREE.Vector3(p1.x, p1.y - arcH, p1.z).lerp(new THREE.Vector3(p2.x, p2.y - arcH, p2.z), 0.3),
+    new THREE.Vector3(p1.x, p1.y - arcH, p1.z).lerp(new THREE.Vector3(p2.x, p2.y - arcH, p2.z), 0.7),
+    p2.clone(),
+  ];
+
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const curvePts = curve.getPoints(20);
+  const curveGeo = new THREE.BufferGeometry().setFromPoints(curvePts);
+
+  const line = new THREE.Line(
+    curveGeo,
+    new THREE.LineBasicMaterial({
+      color: new THREE.Color(fromNode.def.color).lerp(new THREE.Color(toNode.def.color), 0.5),
+      transparent: true,
+      opacity: 0.1,
+      depthWrite: false,
+    })
+  );
+  lineGroup.add(line);
+});
+
+// --- Particles along connections ---
+const particleSystems = [];
+
+connections.forEach((conn, idx) => {
+  const fromNode = nodes[conn.from];
+  const toNode = nodes[conn.to];
+  if (!fromNode || !toNode) return;
+
+  const p1 = fromNode.mesh.position;
+  const p2 = toNode.mesh.position;
+
+  const dy = Math.abs(p1.y - p2.y);
+  const arcH = Math.max(1, dy * 0.15);
+
+  const pts = [
+    p1.clone(),
+    new THREE.Vector3(p1.x, p1.y - arcH, p1.z).lerp(new THREE.Vector3(p2.x, p2.y - arcH, p2.z), 0.3),
+    new THREE.Vector3(p1.x, p1.y - arcH, p1.z).lerp(new THREE.Vector3(p2.x, p2.y - arcH, p2.z), 0.7),
+    p2.clone(),
+  ];
+
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const numParticles = 3;
+  const color = new THREE.Color(fromNode.def.color).lerp(new THREE.Color(toNode.def.color), 0.5);
+
+  for (let i = 0; i < numParticles; i++) {
+    const particleGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const particleMat = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.4,
+    });
+    const particle = new THREE.Mesh(particleGeo, particleMat);
+    const t = (i / numParticles) + Math.random() * 0.3;
+    const pos = curve.getPoint(t % 1);
+    particle.position.copy(pos);
+    particle.userData = { curve, t: t % 1, speed: 0.002 + Math.random() * 0.003 };
+    lineGroup.add(particle);
+    particleSystems.push(particle);
+  }
+});
+
+// --- Layer Labels ---
+Object.entries(layers).forEach(([key, layer]) => {
+  const div = document.createElement('div');
+  div.textContent = layer.label;
+  div.style.color = 'rgba(255,255,255,0.12)';
+  div.style.fontSize = '13px';
+  div.style.fontWeight = '600';
+  div.style.fontFamily = 'Cairo, sans-serif';
+  div.style.letterSpacing = '3px';
+  div.style.textTransform = 'uppercase';
+  div.style.textShadow = '0 2px 20px rgba(0,0,0,0.5)';
+  div.style.pointerEvents = 'none';
+  div.style.whiteSpace = 'nowrap';
+
+  const label = new CSS2DObject(div);
+  label.position.set(-13, layer.y, 0);
+  nodeGroup.add(label);
+});
+
+// --- Interaction ---
+const infoPanel = document.getElementById('info-panel');
+const ipName = document.getElementById('ip-name');
+const ipCategory = document.getElementById('ip-category');
+const ipDesc = document.getElementById('ip-desc');
+
+let hoveredId = null;
+
+function showInfo(def) {
+  ipName.textContent = def.nameAr;
+  ipName.style.color = def.color;
+  ipCategory.textContent = def.cat + ' · ' + def.name;
+  ipDesc.textContent = def.desc;
+  infoPanel.classList.add('visible');
+}
+
+function hideInfo() {
+  infoPanel.classList.remove('visible');
+}
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2(x, y);
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(raycasterTargets);
+
+  // Reset all
+  raycasterTargets.forEach(m => {
+    const mat = m.material;
+    mat.emissiveIntensity = 0.08;
+    mat.opacity = 0.92;
+  });
+
+  if (intersects.length > 0) {
+    const hit = intersects[0].object;
+    const def = hit.userData.def;
+    if (def) {
+      hit.material.emissiveIntensity = 0.6;
+      hit.material.opacity = 1;
+      renderer.domElement.style.cursor = 'pointer';
+      showInfo(def);
+      hoveredId = def.id;
+    }
+  } else {
+    renderer.domElement.style.cursor = 'default';
+    hideInfo();
+    hoveredId = null;
+  }
+});
+
+// --- Window Resize ---
+window.addEventListener('resize', () => {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  labelRenderer.setSize(w, h);
+});
+
+// --- Global controls ---
+window.resetCamera = () => {
+  controls.autoRotate = false;
+  camera.position.set(18, 14, 20);
+  controls.target.set(0, 2, 0);
+  controls.update();
+};
+window.toggleAutoRotate = () => {
+  controls.autoRotate = !controls.autoRotate;
+};
+
+// --- Animation ---
+const clock = new THREE.Clock();
+
+function animate() {
+  const t = clock.getElapsedTime();
+
+  // Float nodes
+  nodeGroup.children.forEach(child => {
+    if (child.isMesh && child.userData.baseY !== undefined) {
+      const baseY = child.userData.baseY;
+      const float = Math.sin(t * 0.5 + child.position.x + child.position.z) * 0.08;
+      child.position.y = baseY + float;
+    }
+  });
+
+  // Animate particles
+  particleSystems.forEach(p => {
+    const curve = p.userData.curve;
+    p.userData.t += p.userData.speed;
+    if (p.userData.t > 1) p.userData.t = 0;
+    const pos = curve.getPoint(p.userData.t);
+    p.position.copy(pos);
+  });
+
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+// --- Hide loading ---
+document.getElementById('loading').classList.add('hidden');
+</script>
+</body>
+</html>
