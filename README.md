@@ -50,7 +50,7 @@
 |-------|-----------|
 | **Runtime** | Node.js + TypeScript |
 | **Framework** | Express 5 |
-| **ORM (SQL)** | Drizzle ORM + PostgreSQL 16 |
+| **ORM (SQL)** | Prisma + PostgreSQL 16 |
 | **ODM (NoSQL)** | Mongoose + MongoDB 7 |
 | **Cache** | Redis 7 (ioredis) |
 | **Validation** | Zod |
