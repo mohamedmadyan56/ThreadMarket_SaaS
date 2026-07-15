@@ -1,173 +1,278 @@
-# FashionConnect — System Design Document
+# ThreadMarket — System Design Document
 
 ---
 
 ## 1. Architecture Overview
 
-**Style**: Microservices + Event-Driven Architecture  
-**Communication**: REST (sync) + RabbitMQ/Kafka (async events)  
+**Style**: Modular Monolith  
+**Communication**: In-process function calls (sync) + Event Bus for async flows  
 **Frontend**: Next.js (SSR for SEO) + React Native (mobile)  
-**Container Orchestration**: Docker + Kubernetes  
-**Storage**: PostgreSQL + MongoDB + Redis + Elasticsearch + S3/MinIO
+**Deployment**: Single Docker container (MVP), split into services when needed  
+**Storage**: PostgreSQL + MongoDB + Redis
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Client Layer                           │
-│    Web (Next.js)     Mobile (RN)    Delivery App (RN)      │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ HTTPS/WSS
-┌──────────────────────────▼──────────────────────────────────┐
-│                    API Gateway (Kong/Nginx)                  │
-│         Rate Limiting · Auth · Routing · Throttling         │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                    Service Layer                             │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │   Auth   │  │  Brand   │  │ Product  │  │  Order   │    │
-│  │ Service  │  │ Service  │  │ Service  │  │ Service  │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │ Payment  │  │Delivery  │  │  Chat    │  │Notification│   │
-│  │ Service  │  │ Service  │  │ Service  │  │ Service   │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │ Search   │  │ Ranking  │  │  Review  │  │  Admin   │    │
-│  │ Service  │  │ Service  │  │ Service  │  │ Service  │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │  Wallet  │  │ Dispute  │  │Moderation│                   │
-│  │ Service  │  │ Service  │  │ Service  │                   │
-│  └──────────┘  └──────────┘  └──────────┘                   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                   Message Broker (RabbitMQ)                  │
-│     Events: order.created, payment.confirmed, delivery.*    │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                    Data Layer                                │
-│                                                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │PostgreSQL│  │ MongoDB  │  │  Redis   │  │Elasticsearch│  │
-│  │ (Orders, │  │(Catalog, │  │(Cache,   │  │ (Search,   │  │
-│  │  Users,  │  │ Categories│  │ Session, │  │  Logs)     │  │
-│  │  Finance)│  │ )        │  │ Real-time)│  │            │  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-│  ┌──────────┐                                               │
-│  │MinIO/S3  │                                               │
-│  │ (Images, │                                               │
-│  │  Docs)   │                                               │
-│  └──────────┘                                               │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                        Client Layer                              │
+│      Web (Next.js)         Mobile (RN)        Delivery App       │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │ HTTPS/WSS
+┌────────────────────────────▼─────────────────────────────────────┐
+│                      API Gateway (Same Process)                   │
+│                      Express · Rate Limit · CORS                  │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────────────┐
+│                      Modular Monolith                             │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │                     Shared Kernel                         │    │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │    │
+│  │  │ Auth     │  │ Validate │  │ Error    │  │ Types   │ │    │
+│  │  │ Middleware│  │ (Zod)    │  │ Handler  │  │         │ │    │
+│  │  └──────────┘  └──────────┘  └──────────┘  └─────────┘ │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│                                                                   │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │
+│  │   Auth   │  │  Brand   │  │ Product  │  │  Order   │         │
+│  │ Module   │  │ Module   │  │ Module   │  │ Module   │         │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │
+│  │ Payment  │  │Delivery  │  │  Chat    │  │Notif.   │         │
+│  │ Module   │  │ Module   │  │ Module   │  │ Module   │         │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │
+│  │ Search   │  │ Ranking  │  │ Review   │  │  Admin   │         │
+│  │ Module   │  │ Module   │  │ Module   │  │ Module   │         │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐         │
+│  │ Wallet   │  │ Dispute  │  │Moderation│  │  Fraud   │         │
+│  │ Module   │  │ Module   │  │ Module   │  │ Module   │         │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘         │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │                  Internal Event Bus                       │    │
+│  │       (order.placed, payment.confirmed, delivery.*)       │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└────────────────────────────┬─────────────────────────────────────┘
+                             │
+┌────────────────────────────▼─────────────────────────────────────┐
+│                         Data Layer                                │
+│                                                                   │
+│  ┌──────────────────┐  ┌──────────────┐  ┌──────────────────┐    │
+│  │   PostgreSQL 16   │  │   MongoDB 7   │  │     Redis 7      │    │
+│  │  (Orders, Users,  │  │ (Catalog,    │  │ (Cache, Session, │    │
+│  │   Finance, Brands)│  │  Chat,       │  │  Cart, Ranking)  │    │
+│  │                   │  │  Categories) │  │                  │    │
+│  └──────────────────┘  └──────────────┘  └──────────────────┘    │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │                    MinIO/S3                               │    │
+│  │              (Product images, verification docs)          │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Service Breakdown
+## 2. Module Breakdown
 
-### 2.1 Auth Service
-- **Role**: Authentication, authorization, OTP, SSO
-- **Endpoints**: `/auth/register`, `/auth/login`, `/auth/verify-otp`, `/auth/refresh`
-- **Storage**: PostgreSQL (`users` table with role enum)
-- **Notes**: SMS OTP primary (WhatsApp/email fallback), JWT + refresh tokens
-- **Tables**: `users`, `roles`, `permissions`, `refresh_tokens`, `otp_codes`
+### 2.1 Auth Module
+- **Role**: Authentication, authorization, OTP, token management
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | POST | `/api/v1/auth/register` | Register (phone + password) |
+  | POST | `/api/v1/auth/login` | Login |
+  | POST | `/api/v1/auth/verify-otp` | Verify phone |
+  | POST | `/api/v1/auth/refresh` | Refresh access token |
+  | POST | `/api/v1/auth/logout` | Invalidate session |
+- **Storage**: PostgreSQL (`users`, `refresh_tokens`, `otp_codes`)
+- **Notes**: SMS OTP primary, JWT access + refresh tokens, bcrypt password hashing
 
-### 2.2 Brand Service
+### 2.2 Brand Module
 - **Role**: Brand CRUD, verification workflow, subscription tiers
-- **Endpoints**: `/brands`, `/brands/{id}/verify`, `/brands/{id}/documents`
+- **Endpoints**:
+  | Method | Path | Description | Auth |
+  |--------|------|-------------|------|
+  | GET | `/api/v1/brands` | List brands (public, ranked) | ✗ |
+  | GET | `/api/v1/brands/:id` | Brand profile | ✗ |
+  | POST | `/api/v1/brands` | Register brand | Brand |
+  | POST | `/api/v1/brands/:id/verify` | Submit verification docs | Admin |
 - **Storage**: PostgreSQL (`brands`, `brand_documents`, `brand_subscriptions`)
 - **Notes**: Multi-tier verification (Pending → Basic → Trusted), document upload to S3
 
-### 2.3 Product Service
+### 2.3 Product Module
 - **Role**: Product CRUD, categories, variants, inventory, bulk CSV
-- **Endpoints**: `/products`, `/products/{id}/variants`, `/categories`, `/products/bulk-upload`
-- **Storage**: MongoDB (product catalog, flexible schema for variants) + PostgreSQL (inventory, SKU tracking)
+- **Endpoints**:
+  | Method | Path | Description | Auth |
+  |--------|------|-------------|------|
+  | GET | `/api/v1/products` | List products (filtered, paginated) | ✗ |
+  | GET | `/api/v1/products/:id` | Product detail with variants | ✗ |
+  | POST | `/api/v1/products` | Create product | Brand |
+  | PUT | `/api/v1/products/:id` | Update product | Brand |
+  | DELETE | `/api/v1/products/:id` | Soft-delete product | Brand |
+  | POST | `/api/v1/products/bulk-upload` | CSV bulk upload | Brand |
+- **Storage**: PostgreSQL (inventory, SKU, pricing) + MongoDB (catalog, flexible variants)
 - **Notes**: Variants (size/color) with per-variant stock, soft-delete, low-stock alerts
 
-### 2.4 Cart Service
+### 2.4 Cart Module
 - **Role**: Multi-brand cart management
-- **Endpoints**: `/cart`, `/cart/items`, `/cart/checkout`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/cart` | Get current cart |
+  | POST | `/api/v1/cart/items` | Add item to cart |
+  | DELETE | `/api/v1/cart/items/:id` | Remove item |
+  | POST | `/api/v1/cart/checkout` | Checkout → create order |
 - **Storage**: Redis (active carts, fast read/write) + PostgreSQL (persisted carts)
-- **Notes**: Cart supports items from multiple brands → split into per-brand sub-orders at checkout
+- **Notes**: Supports items from multiple brands → split into per-brand sub-orders at checkout
 
-### 2.5 Order Service
+### 2.5 Order Module
 - **Role**: Order lifecycle, sub-order splitting, status management
-- **Endpoints**: `/orders`, `/orders/{id}/sub-orders`, `/orders/{id}/status`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/orders` | List user's orders |
+  | POST | `/api/v1/orders` | Create order (from cart) |
+  | GET | `/api/v1/orders/:id` | Order detail + sub-orders |
+  | PUT | `/api/v1/orders/:id/status` | Update order status |
+  | POST | `/api/v1/orders/:id/cancel` | Cancel order |
 - **Storage**: PostgreSQL (`orders`, `sub_orders`, `order_items`, `order_status_history`)
-- **Notes**: Order → Sub-Order per brand, each sub-order has its own delivery, status tracking
+- **Notes**: Order → Sub-Order per brand, each sub-order has its own delivery and status tracking
 
-### 2.6 Payment Service
-- **Role**: Stripe (intl), Paymob (local), COD, Fawry, installments (valU/Aman), wallet
-- **Endpoints**: `/payments/charge`, `/payments/callback/{provider}`, `/payments/refund`
+### 2.6 Payment Module
+- **Role**: Stripe (intl), Paymob (local), COD, Fawry, installments, wallet
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | POST | `/api/v1/payments/charge` | Initiate payment |
+  | POST | `/api/v1/payments/callback/stripe` | Stripe webhook |
+  | POST | `/api/v1/payments/callback/paymob` | Paymob webhook |
+  | POST | `/api/v1/payments/refund` | Initiate refund |
+  | GET | `/api/v1/payments/payouts/brands/:id` | Brand payout history |
 - **Storage**: PostgreSQL (`transactions`, `payment_methods`, `payouts`)
-- **Notes**: COD reconciliation is critical — track cash collected vs. remitted. Payout engine for brands.
+- **Notes**: COD reconciliation, payout engine for brands, webhook signature verification
 
-### 2.7 Delivery Service
-- **Role**: Delivery company onboarding, order dispatch, courier assignment, fee calculation
-- **Endpoints**: `/delivery/companies`, `/delivery/dispatch`, `/delivery/tracking`
+### 2.7 Delivery Module
+- **Role**: Delivery company onboarding, order dispatch, courier assignment
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/delivery/companies` | List delivery companies |
+  | POST | `/api/v1/delivery/dispatch` | Dispatch order to delivery co. |
+  | PUT | `/api/v1/delivery/assignments/:id/status` | Update delivery status |
+  | GET | `/api/v1/delivery/tracking/:subOrderId` | Live tracking |
+  | GET | `/api/v1/delivery/zones` | List zones with fees |
 - **Storage**: PostgreSQL (`delivery_companies`, `couriers`, `delivery_assignments`, `delivery_zones`)
-- **Notes**: Fee calculation by governorate/zone/weight, auto-assignment rules engine, multi-courier fallback
+- **Notes**: Fee calculation by governorate/zone/weight, auto-assignment rules engine
 
-### 2.8 Chat Service
-- **Role**: Real-time chat between user ↔ brand (pre-sale, order support)
-- **Endpoints**: WebSocket (Socket.io or WS), `/chat/conversations`, `/chat/messages`
+### 2.8 Chat Module
+- **Role**: Real-time chat between user ↔ brand
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/chat/conversations` | List conversations |
+  | POST | `/api/v1/chat/conversations` | Create conversation |
+  | WS | `/ws` | WebSocket for real-time messaging |
 - **Storage**: MongoDB (chat history, flexible schema)
-- **Notes**: Flagged message moderation, chat history persistence
+- **Notes**: Flagged message moderation, Socket.io for real-time
 
-### 2.9 Notification Service
-- **Role**: Push, WhatsApp Business API, SMS (Twilio/Ooredoo), Email
+### 2.9 Notification Module
+- **Role**: Push, WhatsApp, SMS, Email
 - **Events consumed**: `order.*`, `payment.*`, `delivery.*`, `chat.*`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/notifications` | User notifications |
+  | PUT | `/api/v1/notifications/:id/read` | Mark as read |
 - **Storage**: PostgreSQL (`notifications`, `notification_templates`)
-- **Notes**: WhatsApp-first for Egypt, SMS OTP fallback, notification preferences per user
+- **Notes**: WhatsApp-first for Egypt, SMS OTP fallback, per-user preferences
 
-### 2.10 Search Service
+### 2.10 Search Module
 - **Role**: Full-text search for products, brands, categories
-- **Endpoints**: `/search/products`, `/search/brands`
-- **Storage**: Elasticsearch (indexed from Product/Brand services via events)
-- **Notes**: Arabic stemmer support, faceted search (category, price range, rating, verified)
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/search/products?q=` | Search products |
+  | GET | `/api/v1/search/brands?q=` | Search brands |
+- **Storage**: Elasticsearch (indexed from Product/Brand modules via events)
+- **Notes**: Arabic stemmer support, faceted search (category, price, rating, verified)
 
-### 2.11 Ranking Service
+### 2.11 Ranking Module
 - **Role**: Brand ranking score calculation
-- **Endpoints**: `/ranking/brands`, `/ranking/score/{brandId}`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/ranking/brands` | Ranked brand list |
+  | GET | `/api/v1/ranking/score/:brandId` | Brand individual score |
 - **Storage**: PostgreSQL (ranking config, weights) + Redis (cached scores)
-- **Notes**: Scheduled job (daily) recalculates scores. Formula from README section 3.4.
+- **Notes**: Daily scheduled job recalculates scores
 
-### 2.12 Review Service
+### 2.12 Review Module
 - **Role**: Product & brand ratings and reviews
-- **Endpoints**: `/reviews/products/{id}`, `/reviews/brands/{id}`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/reviews/products/:id` | Product reviews |
+  | GET | `/api/v1/reviews/brands/:id` | Brand reviews |
+  | POST | `/api/v1/reviews` | Create review |
 - **Storage**: PostgreSQL (`reviews`, `review_images`)
-- **Notes**: Photo/video evidence in disputes, verified purchase badge on reviews
+- **Notes**: Verified purchase badge, photo evidence in disputes
 
-### 2.13 Admin Service
-- **Role**: Admin dashboard, reports, analytics, sub-admin management
-- **Endpoints**: `/admin/dashboard`, `/admin/reports`, `/admin/brands/approve`
-- **Storage**: PostgreSQL (reports, analytics materialized views, admin audit log)
+### 2.13 Admin Module
+- **Role**: Admin dashboard, reports, sub-admin management
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/admin/dashboard` | Platform metrics |
+  | GET | `/api/v1/admin/brands/pending` | Pending verification queue |
+  | POST | `/api/v1/admin/brands/:id/approve` | Approve/reject brand |
+  | GET | `/api/v1/admin/reports/gmv` | GMV report |
+  | GET | `/api/v1/admin/reports/delivery-sla` | Delivery SLA report |
+  | PUT | `/api/v1/admin/ranking/weights` | Adjust ranking weights |
+- **Storage**: PostgreSQL (materialized views, admin audit log)
 - **Notes**: Role-based sub-admins (finance, support, operations)
 
-### 2.14 Wallet Service
+### 2.14 Wallet Module
 - **Role**: In-app wallet for refunds, cashback, loyalty points
-- **Endpoints**: `/wallet/balance`, `/wallet/transactions`, `/wallet/refund`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/wallet/balance` | Wallet balance |
+  | GET | `/api/v1/wallet/transactions` | Transaction history |
+  | POST | `/api/v1/wallet/refund` | Refund to wallet |
 - **Storage**: PostgreSQL (`wallets`, `wallet_transactions`)
 - **Notes**: Instant refund-to-wallet, loyalty points earn/burn
 
-### 2.15 Dispute Service
+### 2.15 Dispute Module
 - **Role**: Order disputes, chat abuse reports, fake product reports
-- **Endpoints**: `/disputes`, `/disputes/{id}/resolve`
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/disputes` | List disputes |
+  | POST | `/api/v1/disputes` | Create dispute |
+  | PUT | `/api/v1/disputes/:id/resolve` | Resolve dispute |
 - **Storage**: PostgreSQL (`disputes`, `dispute_evidence`, `dispute_messages`)
 - **Notes**: Photo/video evidence, admin resolution workflow
 
-### 2.16 Content Moderation Service
-- **Role**: Flagged chat messages, product image/text moderation
-- **Endpoints**: `/moderation/queue`, `/moderation/flag`, `/moderation/review`
+### 2.16 Moderation Module
+- **Role**: Flagged content moderation
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/moderation/queue` | Moderation queue |
+  | POST | `/api/v1/moderation/flag` | Flag content |
+  | PUT | `/api/v1/moderation/review/:id` | Review flagged item |
 - **Storage**: PostgreSQL (moderation queue, flagged items)
-- **Notes**: AI-assisted (image moderation via AWS Rekognition/Google Vision), manual review fallback
+- **Notes**: AI-assisted moderation (image via AWS Rekognition), manual review fallback
 
-### 2.17 Fraud/Risk Service
-- **Role**: Fraud detection, COD trust score, abnormal pattern detection
-- **Endpoints**: `/risk/score/{userId}`, `/risk/flag`
+### 2.17 Fraud Module
+- **Role**: Fraud detection, COD trust score, abnormal patterns
+- **Endpoints**:
+  | Method | Path | Description |
+  |--------|------|-------------|
+  | GET | `/api/v1/fraud/score/:userId` | Fraud risk score |
+  | POST | `/api/v1/fraud/flag` | Flag user for review |
 - **Storage**: PostgreSQL + Redis (real-time counters)
 - **Notes**: Rule-based + ML scoring, COD refusal rate tracking, card-testing detection
 
@@ -187,6 +292,7 @@ CREATE TABLE users (
     role ENUM('admin', 'sub_admin', 'brand', 'end_user', 'delivery_company', 'courier'),
     is_verified BOOLEAN DEFAULT FALSE,
     preferred_language ENUM('ar', 'en') DEFAULT 'ar',
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -209,7 +315,8 @@ CREATE TABLE brands (
     rating DECIMAL(2,1) DEFAULT 0,
     logo_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
@@ -230,7 +337,8 @@ CREATE TABLE brands (
       "color": "Black",
       "price": 450.00,
       "stock": 50,
-      "images": ["url1", "url2"]
+      "images": ["url1", "url2"],
+      "is_active": true
     }
   ],
   "tags": ["casual", "summer"],
@@ -242,17 +350,18 @@ CREATE TABLE brands (
 ### 3.4 Orders
 ```sql
 CREATE TABLE orders (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     status ENUM('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
     total_amount DECIMAL(10,2),
     payment_status ENUM('unpaid', 'paid', 'refunded', 'partial_refund') DEFAULT 'unpaid',
     payment_method ENUM('card_stripe', 'card_paymob', 'wallet', 'cod', 'fawry', 'installment'),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE sub_orders (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_id UUID REFERENCES orders(id),
     brand_id UUID REFERENCES brands(id),
     status ENUM('pending', 'accepted', 'preparing', 'ready', 'picked_up', 'in_transit', 'delivered', 'returned', 'cancelled'),
@@ -262,14 +371,15 @@ CREATE TABLE sub_orders (
     platform_commission DECIMAL(10,2),
     delivery_company_id UUID REFERENCES delivery_companies(id),
     courier_id UUID REFERENCES couriers(id),
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
 ### 3.5 Delivery Zones
 ```sql
 CREATE TABLE delivery_zones (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name_ar VARCHAR(100) NOT NULL,
     name_en VARCHAR(100) NOT NULL,
     governorate VARCHAR(100) NOT NULL,
@@ -281,202 +391,187 @@ CREATE TABLE delivery_zones (
 );
 ```
 
----
+### 3.6 Wallet
+```sql
+CREATE TABLE wallets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) UNIQUE,
+    balance DECIMAL(10,2) DEFAULT 0,
+    loyalty_points INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-## 4. API Design (Key Endpoints)
-
-### Auth (`/api/v1/auth`)
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/register` | Register (phone OTP) |
-| POST | `/verify-otp` | Verify phone |
-| POST | `/login` | Login (phone/email + password) |
-| POST | `/refresh` | Refresh token |
-| POST | `/logout` | Invalidate session |
-
-### Brands (`/api/v1/brands`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | List brands (public, ranked) |
-| GET | `/{id}` | Brand profile |
-| POST | `/` | Register brand (brand only) |
-| PUT | `/{id}` | Update brand |
-| POST | `/{id}/verify` | Submit verification docs |
-| GET | `/{id}/analytics` | Brand analytics (brand/admin) |
-
-### Products (`/api/v1/products`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | List products (filtered, paginated) |
-| GET | `/{id}` | Product detail with variants |
-| POST | `/` | Create product (brand) |
-| PUT | `/{id}` | Update product |
-| DELETE | `/{id}` | Soft-delete product |
-| POST | `/bulk-upload` | CSV bulk upload |
-
-### Orders (`/api/v1/orders`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | List user's orders |
-| POST | `/` | Create order (from cart) |
-| GET | `/{id}` | Order detail + sub-orders |
-| PUT | `/{id}/status` | Update order status |
-| POST | `/{id}/cancel` | Cancel order |
-
-### Delivery (`/api/v1/delivery`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/companies` | List delivery companies |
-| POST | `/dispatch` | Dispatch order to delivery co. |
-| PUT | `/assignments/{id}/status` | Update delivery status |
-| GET | `/tracking/{subOrderId}` | Live tracking |
-| GET | `/zones` | List delivery zones with fees |
-
-### Chat (`/api/v1/chat`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/conversations` | List user's conversations |
-| POST | `/conversations` | Create conversation |
-| WS | `/ws` | WebSocket for real-time messaging |
-
-### Payments (`/api/v1/payments`)
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/charge` | Initiate payment |
-| POST | `/callback/stripe` | Stripe webhook |
-| POST | `/callback/paymob` | Paymob webhook |
-| POST | `/refund` | Initiate refund |
-| GET | `/payouts/brands/{id}` | Brand payout history |
-
-### Admin (`/api/v1/admin`)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/dashboard` | Aggregated platform metrics |
-| GET | `/brands/pending` | Pending verification queue |
-| POST | `/brands/{id}/approve` | Approve/reject brand |
-| GET | `/reports/gmv` | GMV report |
-| GET | `/reports/delivery-sla` | Delivery SLA report |
-| PUT | `/ranking/weights` | Adjust ranking weights |
-
----
-
-## 5. Event Flow (Key Scenarios)
-
-### 5.1 Order Placement
-```
-Cart Service → Order Service → Payment Service
-                                   │
-                          ┌────────▼────────┐
-                          │  Payment OK?    │
-                          └──┬──────────┬───┘
-                          No │          │ Yes
-                             ▼          ▼
-                      Order Cancelled  Order Confirmed
-                                       │
-                                ┌──────▼──────┐
-                                │  Event Bus   │
-                                └──┬───┬───┬──┘
-                                   │   │   │
-                          ┌────────┘   │   └────────┐
-                          ▼            ▼            ▼
-                   Notification   Delivery    Brand Service
-                   Service        Service     (notify brand)
+CREATE TABLE wallet_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    wallet_id UUID REFERENCES wallets(id),
+    type ENUM('credit', 'debit'),
+    amount DECIMAL(10,2),
+    reference_type VARCHAR(50),
+    reference_id UUID,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
-### 5.2 Delivery Lifecycle
-```
-Delivery Service dispatches to delivery company API
-       │
-       ▼
-Courier assigned (auto or manual)
-       │
-       ▼
-Courier picks up → updates status: "picked_up"
-       │
-       ▼
-Courier in transit → updates GPS
-       │
-       ▼
-Delivered → OTP/Signature + Photo confirmation
-       │
-       ▼
-COD collected: triggers reconciliation
-       │
-       ▼
-Payment Service: mark COD as collected → brand payout
-```
-
-### 5.3 Brand Verification
-```
-Brand submits verification docs (S3)
-       │
-       ▼
-Event: brand.verification.submitted
-       │
-       ▼
-Admin dashboard updates (pending queue)
-       │
-       ▼
-Admin reviews (manual + optional AI doc check)
-       │
-       ▼
-Approve/Reject → Event emitted
-       │
-       ▼
-Notification Service → brand is notified
-       │
-       ▼
-Brand goes live or resubmits docs
+### 3.7 Disputes
+```sql
+CREATE TABLE disputes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES orders(id),
+    raised_by UUID REFERENCES users(id),
+    reason ENUM('product_not_received', 'damaged', 'wrong_item', 'quality', 'chat_abuse', 'fake_product', 'other'),
+    status ENUM('open', 'investigating', 'resolved', 'dismissed') DEFAULT 'open',
+    resolution TEXT,
+    resolved_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 ```
 
 ---
 
-## 6. Tech Stack Recommendations
+## 4. Module Communication
+
+### 4.1 In-Process Calls (Sync)
+Modules are in the same process, so they call each other directly:
+
+```typescript
+// order/service.ts
+import { walletService } from '../wallet/wallet.service';
+
+export class OrderService {
+  async completeOrder(orderId: string) {
+    const order = await this.orderModel.findById(orderId);
+    // Direct in-process call — no HTTP, no queue
+    await walletService.credit(order.userId, order.totalAmount * 0.01);
+    await notificationService.send({
+      userId: order.userId,
+      type: 'order.completed',
+      data: { orderId },
+    });
+  }
+}
+```
+
+### 4.2 Event Bus (Async)
+For cross-module concerns that don't need immediate response:
+
+```typescript
+// shared/event-bus.ts
+type EventHandler = (payload: any) => Promise<void>;
+
+class EventBus {
+  private handlers = new Map<string, EventHandler[]>();
+
+  on(event: string, handler: EventHandler) {
+    if (!this.handlers.has(event)) this.handlers.set(event, []);
+    this.handlers.get(event)!.push(handler);
+  }
+
+  async emit(event: string, payload: any) {
+    const handlers = this.handlers.get(event) || [];
+    await Promise.all(handlers.map((h) => h(payload)));
+  }
+}
+
+export const eventBus = new EventBus();
+```
+
+### 4.3 Key Event Flows
+
+#### Order Placement
+```
+Cart Module → Order Module → Payment Module
+                                  │
+                         ┌────────▼────────┐
+                         │  Payment OK?    │
+                         └──┬──────────┬───┘
+                         No │          │ Yes
+                            ▼          ▼
+                     Order Cancelled  Order Confirmed
+                                      │
+                               ┌──────▼──────┐
+                               │  Event Bus   │
+                               └──┬───┬───┬──┘
+                                  │   │   │
+                         ┌────────┘   │   └────────┐
+                         ▼            ▼            ▼
+                  Notification   Delivery      Brand
+                  Module         Module        Module
+```
+
+#### Delivery Lifecycle
+```
+Delivery Module dispatches → Delivery Company API
+       │
+       ▼
+Courier assigned (auto/manual)
+       │
+       ▼
+Picked up → status: "picked_up"
+       │
+       ▼
+In transit → GPS tracking
+       │
+       ▼
+Delivered → OTP + Photo confirmation
+       │
+       ▼
+COD collected → triggers reconciliation
+       │
+       ▼
+Payment Module: mark COD as collected → brand payout
+```
+
+---
+
+## 5. Tech Stack
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| **Frontend Web** | Next.js 14 (App Router) | SSR for SEO, RTL/Arabic support, TypeScript |
-| **Frontend Mobile** | React Native (Expo) | Shared TS types with web, fast iteration |
-| **Backend** | Node.js + NestJS | TypeScript, decorators, module system, microservices-ready |
-| **API Gateway** | Kong / Nginx + Lua | Rate limiting, auth, routing, transformation |
-| **Database (Transactional)** | PostgreSQL 16 | ACID, JSONB, excellent for orders/finance |
-| **Database (Catalog)** | MongoDB 7 | Flexible schema for product variants/categories |
+| **Runtime** | Node.js + TypeScript | Type safety, shared types with frontend |
+| **Framework** | Express 5 | Lightweight, widely adopted |
+| **ORM (SQL)** | Prisma | Type-safe queries, migrations, excellent DX |
+| **ODM (NoSQL)** | Mongoose 9 | Flexible schema for product catalog/chat |
 | **Cache** | Redis 7 | Session, cart, ranking cache, pub/sub |
-| **Search** | Elasticsearch 8 | Full-text with Arabic support, faceted search |
-| **Message Broker** | RabbitMQ | Reliable delivery, dead-letter queues, RPC |
-| **Object Storage** | MinIO (self-hosted) / AWS S3 | Product images, verification docs |
-| **Container** | Docker + Kubernetes | Scalability, self-healing, rolling updates |
-| **Monitoring** | Prometheus + Grafana | Metrics, dashboards, alerts |
-| **Logging** | ELK Stack (Elasticsearch, Logstash, Kibana) | Centralized logging |
-| **CI/CD** | GitHub Actions + ArgoCD | CI pipelines, GitOps deployment |
-| **CDN** | Cloudflare / AWS CloudFront | Image optimization, caching, DDoS protection |
-| **SMS/WhatsApp** | Twilio / Ooredoo API | OTP, notifications, WhatsApp Business API |
-| **Payment** | Stripe + Paymob SDK | International + local payment methods |
+| **Validation** | Zod | Runtime validation + TypeScript type inference |
+| **Auth** | JWT (access + refresh) | Stateless auth, 15-min access, 7-day refresh |
+| **Real-time** | Socket.io | Chat, live tracking |
+| **Object Storage** | MinIO / S3 | Product images, verification docs |
+| **Container** | Docker | Consistent dev/prod environment |
 
 ---
 
-## 7. Security Considerations
+## 6. Security
 
-- **JWT with refresh tokens** — short-lived access tokens (15 min), long-lived refresh (7 days)
-- **Role-based access control (RBAC)** — per-endpoint authorization middleware
-- **API Rate Limiting** — per user/IP, tiered by endpoint sensitivity
-- **Encryption at rest** — PostgreSQL TDE, S3 server-side encryption
-- **Encryption in transit** — TLS 1.3 for all external + internal service communication
-- **Webhook signature verification** — validate Stripe/Paymob webhooks with HMAC
-- **Input sanitization** — XSS prevention, SQL injection via parameterized queries
-- **GDPR/Law 151 compliance** — data retention policies, user data export/deletion
-
----
-
-## 8. Scaling Strategy
-
-| Phase | Users | Orders/mo | Infrastructure |
-|-------|-------|-----------|----------------|
-| **MVP** | 1K | 500 | Monolith + single PG + Redis |
-| **Growth** | 50K | 25K | Microservices split, read replicas, Elasticsearch |
-| **Scale** | 500K | 250K | Kubernetes, sharding, CDN, event-driven async |
-| **Enterprise** | 2M+ | 1M+ | Multi-region, CQRS, data lake for analytics |
+- **JWT with refresh tokens** — short-lived access (15 min), long-lived refresh (7 days)
+- **RBAC** — `authenticate` + `authorize('admin', 'brand')` middleware per route
+- **Rate Limiting** — 100 req/15min per IP on `/api`
+- **Helmet** — Security headers (XSS, CSP, etc.)
+- **Zod validation** — All inputs validated before reaching business logic
+- **bcrypt** — Password hashing with 12 salt rounds
+- **Webhook verification** — HMAC signature validation for Stripe/Paymob
 
 ---
 
-*This document is a technical system design complementing the functional README. It should be used as the starting point for sprint-zero architecture discussions.*
+## 7. Scaling Strategy
+
+| Phase | Users | Orders/mo | Architecture |
+|-------|-------|-----------|--------------|
+| **MVP** | 1K | 500 | Modular Monolith + single PG + Redis |
+| **Growth** | 50K | 25K | Extract hot modules (Order, Payment) as services |
+| **Scale** | 500K | 250K | Kubernetes, read replicas, Elasticsearch |
+| **Enterprise** | 2M+ | 1M+ | Multi-region, CQRS, data lake |
+
+### Extraction Path
+When a module needs to become its own service:
+```
+1. Copy module code to new repo
+2. Add HTTP/API layer
+3. Replace in-process calls with HTTP client
+4. Deploy independently
+5. Update EventBus to use RabbitMQ
+```
+
+---
