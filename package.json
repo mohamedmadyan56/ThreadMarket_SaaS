@@ -9,9 +9,9 @@
     "dev": "ts-node src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",
     "generate": "prisma generate",
-    "migrate": "prisma migrate dev", 
-    "push" : "prisma db push" ,
-    "pull" : "prisma db pull"
+    "migrate": "prisma migrate dev",
+    "push": "prisma db push",
+    "pull": "prisma db pull"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -24,6 +24,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.0.0",
+    "http-status-codes": "^2.3.0",
     "ioredis": "^5.4.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.10.0",
