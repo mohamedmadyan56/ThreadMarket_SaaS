@@ -7,10 +7,15 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "dev:watch": "nodemon --exec ts-node src/server.ts"
+    "dev:watch": "nodemon --exec ts-node src/server.ts",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev", 
+    "push" : "prisma db push" ,
+    "pull" : "prisma db pull"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "amqplib": "^0.10.4",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
@@ -27,6 +32,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.10.1",
     "pg": "^8.13.0",
+    "prisma": "^7.8.0",
     "redis": "^4.7.0",
     "socket.io": "^4.8.0",
     "zod": "^3.23.0"
