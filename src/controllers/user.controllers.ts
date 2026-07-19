@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../helpers/asyncHandler';
 import  ApiError  from "../classes/ApiError";
 import ApiResponse from "../classes/ApiResponse";
-import {generateAccessToken, generateRefreshToken} from "../helpers/JwtToken";
+import {generateAccessToken, generateRefreshToken} from "../helpers/generateTokens";
 import { ENV } from '../helpers/ENV';
 
 
@@ -39,6 +39,14 @@ if (!user) {
   throw new ApiError("Invalid credentials", 401);
 }
 
+// Check if account is locked.
+if (user.lockedUntil && user.lockedUntil > new Date()) {
+  throw new ApiError("Account is locked. Please try again later.", 403);
+}
+// check if account is banned
+if (user.isBanned) {
+  throw new ApiError("Account is banned. Please contact support.", 403);
+}
 // Compare password using bcrypt.
 const isPasswordValid = await bcrypt.compare(password, user.password);
 if (!isPasswordValid) {
@@ -57,14 +65,6 @@ if (!isPasswordValid) {
     })
   throw new ApiError("Invalid credentials", 401);
 } 
-// Check if account is locked.
-if (user.lockedUntil && user.lockedUntil > new Date()) {
-  throw new ApiError("Account is locked. Please try again later.", 403);
-}
-// check if account is banned
-if (user.isBanned) {
-  throw new ApiError("Account is banned. Please contact support.", 403);
-}
 //  Generate:
 //        access token (15 min)
 const accessToken = generateAccessToken({ id: user.id });
