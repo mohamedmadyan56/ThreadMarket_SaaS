@@ -19,6 +19,41 @@ export const baseCookieOptions: Omit<CookieOptions, "maxAge"> = {
   path: "/",
 };
 
+export const register = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email, username, password } = req.body;
+
+    const user = await new User().register(
+      username,
+      email,
+      password,
+      req.file?.path,
+    );
+
+    res.cookie("accessToken", user.data.Token, {
+      ...baseCookieOptions,
+      maxAge: user.data.expiration * 1000 * 60,
+    });
+    return res
+      .status(StatusCodes.OK)
+      .json(new ApiResponse(user.success, user.message, user.data));
+  },
+);
+
+export const verifyRegisterOtp = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { otp }: { otp: string } = req.body;
+
+    // Verify given Otp With User Stored Otp
+    const user = new User();
+    const otpMiddleware = await user.verifyRegisterOtp(otp.trim());
+    const result = await otpMiddleware(req, res, next);
+
+    return res
+      .status(StatusCodes.OK)
+      .json(new ApiResponse(result.success, result.message, result.data));
+  },
+);
 export const forgetPassword = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { email } = req.body;
