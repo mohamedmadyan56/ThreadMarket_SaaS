@@ -54,6 +54,17 @@ export const verifyRegisterOtp = asyncHandler(
       .json(new ApiResponse(result.success, result.message, result.data));
   },
 );
+
+export const logout = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = new User();
+    const logout = await user.logout();
+    const result = await logout(req, res, next);
+    return res
+      .status(StatusCodes.OK)
+      .json(new ApiResponse(result.success, result.message, result.data));
+  },
+);
 export const forgetPassword = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { email } = req.body;
