@@ -36,13 +36,9 @@ const user = await prisma.user.findFirst({
 });
 
 if (!user) {
-  throw new ApiError("Invalid credentials", 404);
+  throw new ApiError("Invalid credentials", 401);
 }
 
-// Check if account is locked.
-if (user.lockedUntil && user.lockedUntil > new Date()) {
-  throw new ApiError("Account is locked. Please try again later.", 403);
-}
 // Compare password using bcrypt.
 const isPasswordValid = await bcrypt.compare(password, user.password);
 if (!isPasswordValid) {
@@ -56,11 +52,19 @@ if (!isPasswordValid) {
     await prisma.user.update({
         where: { id: user.id },
         data: {
-            ...updateData
+          ...updateData
         }
     })
   throw new ApiError("Invalid credentials", 401);
 } 
+// Check if account is locked.
+if (user.lockedUntil && user.lockedUntil > new Date()) {
+  throw new ApiError("Account is locked. Please try again later.", 403);
+}
+// check if account is banned
+if (user.isBanned) {
+  throw new ApiError("Account is banned. Please contact support.", 403);
+}
 //  Generate:
 //        access token (15 min)
 const accessToken = generateAccessToken({ id: user.id });
@@ -95,6 +99,7 @@ const safeUser = {
       maxAge: Number(ENV.ACCESS_TOKEN_EXPIRY),
       httpOnly: true,
       secure: true,
+      sameSite: "strict" as const,
     });
 return res.status(200).json(
   new ApiResponse(true, "Login successful",{
