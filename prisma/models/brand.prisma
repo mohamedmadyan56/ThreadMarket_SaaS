@@ -1,0 +1,78 @@
+// enum BrandVerificationTier {
+//   pending
+//   basic_verified
+//   trusted_verified
+//   suspended
+
+//   @@map("brand_verification_tier")
+// }
+
+// model Brand {
+//   id                 String                 @id @default(uuid()) @db.Uuid
+//   userId             String                 @map("user_id") @db.Uuid
+//   displayName        String                 @map("display_name")
+//   ownerNationalId    String?                @map("owner_national_id")
+//   bankIban           String?                @map("bank_iban")
+//   verificationStatus BrandVerificationTier  @default(pending) @map("verification_status")
+//   rating             Decimal                @default(0) @db.Decimal(2, 1)
+//   logoUrl            String?                @map("logo_url")
+//   followersCount     Int                    @default(0) @map("followers_count")
+//   viewedTimes        BigInt                 @default(0) @map("viewed_times")
+//   isPromoted         Boolean                @default(false) @map("is_promoted")
+//   isActive           Boolean                @default(true) @map("is_active")
+//   balance            Decimal                @default(0) @db.Decimal(12, 2)
+//   paymentDetails     Json?                  @map("payment_details")
+//   createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz
+//   updatedAt          DateTime               @default(now()) @map("updated_at") @db.Timestamptz
+
+//   user               User                   @relation(fields: [userId], references: [id])
+//   documents          BrandDocument[]
+//   socialLinks        BrandSocialLink[]
+//   followers          BrandFollower[]
+//   products           Product[]
+//   reviews            Review[]
+//   chatThreads        ChatThread[]
+//   adCampaigns        AdCampaign[]
+//   rankingScore       RankingScore?
+
+//   @@map("brands")
+// }
+
+// model BrandDocument {
+//   id         String    @id @default(uuid()) @map("document_id") @db.Uuid
+//   brandId    String    @map("brand_id") @db.Uuid
+//   docType    String    @map("doc_type") @db.VarChar(40)
+//   fileUrl    String    @map("file_url")
+//   reviewedBy String?   @map("reviewed_by") @db.Uuid
+//   reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz
+//   status     String    @default("pending") @db.VarChar(20)
+//   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+//   brand      Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+//   reviewer   User?     @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
+
+//   @@map("brand_documents")
+// }
+
+// model BrandSocialLink {
+//   brandId  String @map("brand_id") @db.Uuid
+//   platform String @db.VarChar(30)
+//   url      String
+
+//   brand    Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+//   @@id([brandId, platform])
+//   @@map("brand_social_links")
+// }
+
+// model BrandFollower {
+//   brandId    String   @map("brand_id") @db.Uuid
+//   userId     String   @map("user_id") @db.Uuid
+//   followedAt DateTime @default(now()) @map("followed_at") @db.Timestamptz
+
+//   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+//   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@id([brandId, userId])
+//   @@map("brand_followers")
+// }
