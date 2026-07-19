@@ -2,6 +2,7 @@ import { Router } from "express";
 import { validationMiddleware } from "../middlewares/validationMiddleware";
 import {
   forgetPassword,
+  refreshAccessToken,
   resetPassword,
   verifyOtp,
 } from "../controllers/user.controllers";
@@ -10,6 +11,7 @@ import {
   otpSchema,
   resetPasswordSchema,
 } from "../validators/user.validators";
+import { isAuthenticated } from "../middlewares/isAuthenticated";
 const router = Router();
 
 router.post(
@@ -24,3 +26,5 @@ router.patch(
   validationMiddleware(resetPasswordSchema),
   resetPassword,
 );
+
+router.post("/refresh-accessToken", isAuthenticated, refreshAccessToken);

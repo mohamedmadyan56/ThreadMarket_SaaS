@@ -8,6 +8,10 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { ENV } from "../helpers/ENV";
 import { type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../helpers/generateTokens";
 class User {
   constructor() {}
 
@@ -101,7 +105,7 @@ class User {
       if (!user)
         throw new ApiError(`We Couldn't Found User`, StatusCodes.NOT_FOUND);
       // Check if otp is expired then verify given otp with user saved otp
-      if (new Date(Date.now()) < user.otp_expiration!)
+      if (new Date(Date.now()) > user.otp_expiration!)
         throw new ApiError(
           "Otp is Expired .. Reset Password Again",
           StatusCodes.BAD_REQUEST,
@@ -113,9 +117,7 @@ class User {
           StatusCodes.BAD_REQUEST,
         );
       // Remove token of reset-password-purpose
-      res.clearCookie("accessToken", {
-        maxAge: payload.exp,
-      });
+      res.clearCookie("accessToken");
 
       // Sign Token With Purpose verify-otp
       const Token = await jwt.sign(
@@ -192,6 +194,78 @@ class User {
         success: true,
         data: null,
         message: "Password-reseted Successfully",
+      };
+    };
+  }
+
+  async refreshAccessToken() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const incomingRefreshToken =
+        req.cookies?.refreshToken ||
+        (req.headers?.authorization?.startsWith("Bearer") &&
+          req.headers?.authorization?.split("_")[1]);
+
+      if (!incomingRefreshToken)
+        throw new ApiError(
+          "Refresh Token is Missing",
+          StatusCodes.UNAUTHORIZED,
+        );
+
+      const payload = (await jwt.verify(
+        incomingRefreshToken,
+        ENV.REFRESH_TOKEN_SECRET!,
+      )) as JwtPayload;
+
+      // get User using id stored in refreshToken
+      const user = await prisma.user.findFirst({
+        where: {
+          id: payload.id,
+        },
+      });
+
+      if (!user)
+        throw new ApiError(`We Couldn't Found User`, StatusCodes.NOT_FOUND);
+
+      // Compare against DB-stored refreshToken — allows revocation/rotation
+      if (user.refreshToken !== incomingRefreshToken)
+        throw new ApiError(
+          "Refresh Token is Invalid or Has Been Revoked",
+          StatusCodes.UNAUTHORIZED,
+        );
+
+      if (user.isBanned)
+        throw new ApiError("Account is Banned", StatusCodes.FORBIDDEN);
+
+      if (user.lockedUntil && user.lockedUntil > new Date())
+        throw new ApiError(
+          "Account is Temporarily Locked",
+          StatusCodes.FORBIDDEN,
+        );
+
+      // Rotate both tokens
+      const tokenPayload = { id: user.id };
+      const newAccessToken = generateAccessToken(tokenPayload);
+      const newRefreshToken = generateRefreshToken(tokenPayload);
+
+      // Persist new refreshToken, invalidating the old one
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          refreshToken: newRefreshToken,
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+          accessTokenExpiration: Number(ENV.ACCESS_TOKEN_EXPIRY),
+          refreshTokenExpiration: Number(ENV.REFRESH_TOKEN_EXPIRY),
+        },
+        message: "Access Token Refreshed Successfully",
       };
     };
   }
