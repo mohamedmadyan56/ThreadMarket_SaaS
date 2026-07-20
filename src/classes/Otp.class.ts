@@ -1,5 +1,5 @@
 import prisma from "../utils/connectDB";
-import { nanoid } from "nanoid";
+import { customAlphabet, nanoid } from "nanoid";
 class Otp {
   otp: string = "";
   otp_expiration_date: Date;
@@ -12,8 +12,8 @@ class Otp {
   }
 
   generateOtp() {
-    const generatedOtp = nanoid(5);
-    return (this.otp = generatedOtp);
+    const generatedOtp = customAlphabet("0123456789", 5);
+    return (this.otp = generatedOtp());
   }
 }
 

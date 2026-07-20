@@ -37,6 +37,7 @@ model User {
   otp                 String?
   otp_expiration      DateTime?
   otp_purpose         otpPurpose?
+  isVerified          Boolean     @default(false)
   isBanned            Boolean     @default(false)
   refreshToken        String?
   created_At          DateTime    @default(now())

@@ -5,15 +5,30 @@ import {
   refreshAccessToken,
   resetPassword,
   verifyOtp,
+  register,
+  verifyRegisterOtp,
 } from "../controllers/user.controllers";
 import {
   forgetPasswordSchema,
   otpSchema,
+  registerSchema,
   resetPasswordSchema,
 } from "../validators/user.validators";
 import { isAuthenticated } from "../middlewares/isAuthenticated";
+import { upload } from "../utils/multer";
 const router = Router();
 
+router.post(
+  "/register",
+  validationMiddleware(registerSchema),
+  upload.single("picture"),
+  register,
+);
+router.post(
+  "/register-verify-otp",
+  validationMiddleware(otpSchema),
+  verifyRegisterOtp,
+);
 router.post(
   "/forget-password",
   validationMiddleware(forgetPasswordSchema),

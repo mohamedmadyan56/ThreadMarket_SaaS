@@ -12,9 +12,152 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "../helpers/generateTokens";
+
+import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary";
+import { removePicsFromLocal } from "../helpers/removeLocalFiles";
 class User {
   constructor() {}
+  async register(
+    username: string,
+    email: string,
+    password: string,
+    filePath?: string,
+  ) {
+    const existingUser = await prisma.user.findFirst({
+      where: { email },
+    });
 
+    if (existingUser)
+      throw new ApiError(
+        `User with email ${email} already exists`,
+        StatusCodes.CONFLICT,
+      );
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    let picture: { url: string; id: string } | undefined;
+
+    if (filePath) {
+      picture = await User.uploadPicture(filePath);
+    }
+
+    const otpUtil = new Otp(5);
+    const generatedOtp = otpUtil.generateOtp();
+    console.log(generatedOtp);
+    const otpSalt = await bcrypt.genSalt(10);
+    const hashedOtp = await bcrypt.hash(generatedOtp, otpSalt);
+
+    try {
+      await sendEmail(
+        email,
+        "Sign up Verification",
+        otpEmailTemplate({
+          name: username,
+          otp: generatedOtp,
+          expiresInMinutes: otpUtil.otp_expiration_minutes,
+          appName: "Fashion Connect",
+          supportEmail: "example@gmail.com",
+        }),
+      );
+    } catch (error) {
+      // Email failed to send — nothing was persisted, but the picture
+      // was already uploaded, so clean it up
+      if (picture?.id) await User.deletePicture(picture.id);
+      throw error;
+    }
+
+    // Carry the pending registration in the token itself — nothing
+    // touches the User table until the OTP is verified
+    const Token = jwt.sign(
+      {
+        purpose: "signup-pending",
+        username,
+        email,
+        password: hashedPassword,
+        picture,
+        otpHash: hashedOtp,
+      },
+      ENV.ACCESS_TOKEN_SECRET!,
+      { expiresIn: otpUtil.otp_expiration_minutes * 60 * 1000 },
+    );
+
+    return {
+      success: true,
+      data: { Token, expiration: otpUtil.otp_expiration_minutes },
+      message: `Otp Sent to Your Email ${email}. Verify to complete registration`,
+    };
+  }
+
+  async verifyRegisterOtp(otp: string) {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const token =
+        req.cookies?.accessToken ||
+        (req.headers?.authorization?.startsWith("Bearer") &&
+          req.headers?.authorization?.split(" ")[1]);
+
+      console.log(req.cookies?.accessToken);
+      if (!token)
+        throw new ApiError(
+          "Registration Session is Missing",
+          StatusCodes.UNAUTHORIZED,
+        );
+
+      const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+      console.log(payload);
+      if (payload?.purpose !== "signup-pending")
+        throw new ApiError(
+          "Invalid Registration Session",
+          StatusCodes.BAD_REQUEST,
+        );
+
+      const otpMatches = await bcrypt.compare(otp, payload.otpHash!);
+      console.log(`otp Checking ${otpMatches}`);
+      if (!otpMatches)
+        throw new ApiError(
+          "Otp is not Matched or Correct",
+          StatusCodes.BAD_REQUEST,
+        );
+
+      // Someone else could've registered this email while this token
+      // was still pending — re-check before creating
+      const existingUser = await prisma.user.findFirst({
+        where: { email: payload.email },
+      });
+
+      if (existingUser) {
+        if (payload.picture?.id) await User.deletePicture(payload.picture.id);
+        throw new ApiError(
+          `User with email ${payload.email} already exists`,
+          StatusCodes.CONFLICT,
+        );
+      }
+
+      try {
+        await prisma.user.create({
+          data: {
+            username: payload.username,
+            email: payload.email,
+            password: payload.password,
+            picture_url: payload.picture?.url,
+            picture_url_id: payload.picture?.id,
+            isVerified: true,
+          },
+        });
+
+        res.clearCookie("accessToken");
+
+        return {
+          success: true,
+          data: null,
+          message: "Account Verified and Created Successfully",
+        };
+      } catch (error) {
+        if (payload.picture?.id) await User.deletePicture(payload.picture.id);
+        throw error;
+      }
+    };
+  }
   async sendOtp(email: string, purpose: string) {
     // generate Otp Using Otp Class
     const otpUtil = new Otp(5);
@@ -87,24 +230,15 @@ class User {
         (req.headers?.authorization?.startsWith("Bearer") &&
           req.headers?.authorization?.split(" ")[1]);
 
-      const payload = (await jwt.verify(
-        token,
-        ENV.ACCESS_TOKEN_SECRET!,
-      )) as JwtPayload;
+      const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
 
-      // check if the token is on another purpose
       if (payload?.purpose !== "reset-password")
         throw new ApiError("Invalid Cookie Session", StatusCodes.BAD_REQUEST);
-      // get User using id stored in accessToken
-      const user = await prisma.user.findFirst({
-        where: {
-          id: payload.id,
-        },
-      });
 
+      const user = await prisma.user.findFirst({ where: { id: payload.id } });
       if (!user)
         throw new ApiError(`We Couldn't Found User`, StatusCodes.NOT_FOUND);
-      // Check if otp is expired then verify given otp with user saved otp
+
       if (new Date(Date.now()) > user.otp_expiration!)
         throw new ApiError(
           "Otp is Expired .. Reset Password Again",
@@ -116,39 +250,23 @@ class User {
           `Otp is not Matched or Correct`,
           StatusCodes.BAD_REQUEST,
         );
-      // Remove token of reset-password-purpose
+
       res.clearCookie("accessToken");
 
-      // Sign Token With Purpose verify-otp
-      const Token = await jwt.sign(
-        {
-          id: user.id,
-          purpose: "verify-otp",
-        },
+      const Token = jwt.sign(
+        { id: user.id, purpose: "verify-otp" },
         ENV.ACCESS_TOKEN_SECRET!,
-        {
-          expiresIn: 5 * 60 * 1000,
-        },
+        { expiresIn: 5 * 60 },
       );
 
-      // Update Otp and Otp_Expiration and otp-purpose to null
       await prisma.user.update({
-        where: {
-          id: user.id,
-        },
-        data: {
-          otp: null,
-          otp_expiration: null,
-          otp_purpose: undefined,
-        },
+        where: { id: user.id },
+        data: { otp: null, otp_expiration: null, otp_purpose: null },
       });
 
       return {
         success: true,
-        data: {
-          Token,
-          expiration: 5,
-        },
+        data: { Token, expiration: 5 },
         message: "Otp Verified Successfully",
       };
     };
@@ -268,6 +386,33 @@ class User {
         message: "Access Token Refreshed Successfully",
       };
     };
+  }
+
+  static async uploadPicture(filePath: string, folder: string = "users") {
+    try {
+      const result = await uploadToCloudinary(filePath, folder);
+      return {
+        url: result.secure_url,
+        id: result.public_id,
+      };
+    } finally {
+      // Best-effort cleanup — don't let a delete failure mask
+      // an upload error (or hide a successful upload's result)
+      try {
+        removePicsFromLocal(filePath);
+      } catch (cleanupError) {
+        console.log("Failed to remove temp file:", cleanupError);
+      }
+    }
+  }
+
+  static async deletePicture(publicId: string) {
+    try {
+      await deleteFromCloudinary(publicId);
+    } catch (error) {
+      // Usually called as a rollback — don't let this crash the caller
+      console.log("Failed to delete picture during rollback:", error);
+    }
   }
 }
 
