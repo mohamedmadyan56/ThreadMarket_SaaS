@@ -88,7 +88,39 @@ class User {
       message: `Otp Sent to Your Email ${email}. Verify to complete registration`,
     };
   }
+  logout() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+      const token =
+        req.cookies?.accessToken ||
+        (req.headers?.authorization?.startsWith("Bearer") &&
+          req.headers?.authorization?.split(" ")[1]);
 
+      if (!token)
+        throw new ApiError(
+          "Registration Session is Missing",
+          StatusCodes.UNAUTHORIZED,
+        );
+
+      const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+      console.log(payload);
+      await prisma.user.update({
+        where: {
+          id: payload.id,
+        },
+        data: {
+          refreshToken: null,
+          isOnline: false,
+        },
+      });
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
+      return {
+        success: true,
+        message: "Logout Successfully",
+        data: null,
+      };
+    };
+  }
   async verifyRegisterOtp(otp: string) {
     return async (req: Request, res: Response, next: NextFunction) => {
       const token =

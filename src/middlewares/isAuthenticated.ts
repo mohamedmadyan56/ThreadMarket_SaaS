@@ -13,7 +13,7 @@ export const isAuthenticated = async (
     const id =
       req.cookies?.accessToken ||
       (req.headers?.authorization?.startsWith("Bearer") &&
-        req.headers.authorization.split("_")[1]);
+        req.headers.authorization.split(" ")[1]);
 
     if (!id) {
       return next(
