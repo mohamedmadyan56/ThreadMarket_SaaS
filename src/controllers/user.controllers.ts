@@ -60,3 +60,22 @@ export const resetPassword = asyncHandler(
       .json(new ApiResponse(result.success, result.message, result.data));
   },
 );
+
+export const refreshAccessToken = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = new User();
+    const refreshMiddleware = await user.refreshAccessToken();
+    const result = await refreshMiddleware(req, res, next);
+
+    res.cookie("accessToken", result.data.accessToken, {
+      maxAge: result.data.accessTokenExpiration,
+    });
+    res.cookie("refreshToken", result.data.refreshToken, {
+      maxAge: result.data.refreshTokenExpiration,
+    });
+
+    return res
+      .status(StatusCodes.OK)
+      .json(new ApiResponse(result.success, result.message, result.data));
+  },
+);
