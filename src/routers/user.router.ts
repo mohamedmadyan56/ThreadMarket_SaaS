@@ -28,3 +28,5 @@ router.patch(
 );
 
 router.post("/refresh-accessToken", isAuthenticated, refreshAccessToken);
+
+export default router;
