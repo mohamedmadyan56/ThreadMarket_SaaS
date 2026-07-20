@@ -17,7 +17,6 @@ export const baseCookieOptions: Omit<CookieOptions, "maxAge"> = {
   secure: isProduction,
   sameSite: isProduction ? "none" : "lax",
   path: "/",
-  domain: isProduction ? ".yourdomain.com" : undefined,
 };
 
 export const forgetPassword = asyncHandler(
@@ -28,11 +27,11 @@ export const forgetPassword = asyncHandler(
     // First instantiate an instance from User
     const user = new User();
     const result = await user.sendOtp(email, "resetpassword");
-
+    console.log(result.data.expiration);
     // Setting access Token in Cookies
     res.cookie("accessToken", result.data.Token, {
       ...baseCookieOptions,
-      maxAge: result.data.expiration,
+      maxAge: result.data.expiration * 1000 * 60,
     });
     return res
       .status(StatusCodes.OK)
@@ -51,7 +50,7 @@ export const verifyOtp = asyncHandler(
 
     res.cookie("accessToken", result.data.Token, {
       ...baseCookieOptions,
-      maxAge: result.data.expiration,
+      maxAge: result.data.expiration * 1000 * 60,
     });
     return res
       .status(StatusCodes.OK)
@@ -81,11 +80,11 @@ export const refreshAccessToken = asyncHandler(
 
     res.cookie("accessToken", result.data.accessToken, {
       ...baseCookieOptions,
-      maxAge: result.data.accessTokenExpiration,
+      maxAge: result.data.accessTokenExpiration * 1000 * 60,
     });
     res.cookie("refreshToken", result.data.refreshToken, {
       ...baseCookieOptions,
-      maxAge: result.data.refreshTokenExpiration,
+      maxAge: result.data.refreshTokenExpiration * 1000 * 60,
     });
 
     return res

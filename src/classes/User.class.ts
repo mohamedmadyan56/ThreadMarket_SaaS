@@ -85,7 +85,7 @@ class User {
       const token =
         req.cookies?.accessToken ||
         (req.headers?.authorization?.startsWith("Bearer") &&
-          req.headers?.authorization?.split("_")[1]);
+          req.headers?.authorization?.split(" ")[1]);
 
       const payload = (await jwt.verify(
         token,
@@ -147,7 +147,7 @@ class User {
         success: true,
         data: {
           Token,
-          expiration: 5 * 60 * 1000,
+          expiration: 5,
         },
         message: "Otp Verified Successfully",
       };
@@ -159,7 +159,7 @@ class User {
       const token =
         req.cookies?.accessToken ||
         (req.headers?.authorization?.startsWith("Bearer") &&
-          req.headers?.authorization?.split("_")[1]);
+          req.headers?.authorization?.split(" ")[1]);
 
       const payload = (await jwt.verify(
         token,
@@ -203,7 +203,7 @@ class User {
       const incomingRefreshToken =
         req.cookies?.refreshToken ||
         (req.headers?.authorization?.startsWith("Bearer") &&
-          req.headers?.authorization?.split("_")[1]);
+          req.headers?.authorization?.split(" ")[1]);
 
       if (!incomingRefreshToken)
         throw new ApiError(
