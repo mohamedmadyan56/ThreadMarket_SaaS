@@ -9,6 +9,16 @@ import { ENV } from "../helpers/ENV";
 import { Request, Response, NextFunction } from "express";
 import User from "../classes/User.class";
 import { StatusCodes } from "http-status-codes";
+import { CookieOptions } from "express";
+const isProduction = ENV.NODE_ENV === "production";
+
+export const baseCookieOptions: Omit<CookieOptions, "maxAge"> = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+  domain: isProduction ? ".yourdomain.com" : undefined,
+};
 
 export const forgetPassword = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -21,6 +31,7 @@ export const forgetPassword = asyncHandler(
 
     // Setting access Token in Cookies
     res.cookie("accessToken", result.data.Token, {
+      ...baseCookieOptions,
       maxAge: result.data.expiration,
     });
     return res
@@ -39,6 +50,7 @@ export const verifyOtp = asyncHandler(
     const result = await otpMiddleware(req, res, next);
 
     res.cookie("accessToken", result.data.Token, {
+      ...baseCookieOptions,
       maxAge: result.data.expiration,
     });
     return res
@@ -68,9 +80,11 @@ export const refreshAccessToken = asyncHandler(
     const result = await refreshMiddleware(req, res, next);
 
     res.cookie("accessToken", result.data.accessToken, {
+      ...baseCookieOptions,
       maxAge: result.data.accessTokenExpiration,
     });
     res.cookie("refreshToken", result.data.refreshToken, {
+      ...baseCookieOptions,
       maxAge: result.data.refreshTokenExpiration,
     });
 
