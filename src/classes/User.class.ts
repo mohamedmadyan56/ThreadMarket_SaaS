@@ -39,8 +39,8 @@ class User {
       "Otp Verification",
       otpEmailTemplate({
         name: user.username,
-        otp: user.otp!,
-        expiresInMinutes: otpUtil.otp_expiration_minutes * 60 * 1000,
+        otp: generatedOtp,
+        expiresInMinutes: otpUtil.otp_expiration_minutes,
         appName: "Fashion Connect",
         supportEmail: "example@gmail.com",
       }),
