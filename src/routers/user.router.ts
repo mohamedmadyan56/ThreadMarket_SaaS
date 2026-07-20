@@ -7,6 +7,7 @@ import {
   verifyOtp,
   register,
   verifyRegisterOtp,
+  logout,
 } from "../controllers/user.controllers";
 import {
   forgetPasswordSchema,
@@ -42,6 +43,7 @@ router.patch(
   resetPassword,
 );
 
+router.post("/logout", isAuthenticated, logout);
 router.post("/refresh-accessToken", isAuthenticated, refreshAccessToken);
 
 export default router;
