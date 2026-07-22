@@ -14,7 +14,7 @@
     "pull": "prisma db pull"
   },
   "prisma": {
-    "seed": "ts-node .src/helpers/seed.ts"
+    "seed": "ts-node src/helpers/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
