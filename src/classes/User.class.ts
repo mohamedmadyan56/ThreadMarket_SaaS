@@ -132,9 +132,9 @@ class User {
     }
     //  Generate:
     //        access token (15 min)
-    const accessToken = generateAccessToken({ id: user.id });
+    const accessToken = generateAccessToken({ id: user.id, role: user.role });
     //        refresh token (7 days)
-    const refreshToken = generateRefreshToken({ id: user.id });
+    const refreshToken = generateRefreshToken({ id: user.id , role: user.role });
 
     // Update user:
     //        failedLoginAttempts = 0
@@ -477,7 +477,7 @@ class User {
         );
 
       // Rotate both tokens
-      const tokenPayload = { id: user.id };
+      const tokenPayload = { id: user.id , role: user.role };
       const newAccessToken = generateAccessToken(tokenPayload);
       const newRefreshToken = generateRefreshToken(tokenPayload);
 
