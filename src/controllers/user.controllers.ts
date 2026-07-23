@@ -40,6 +40,27 @@ export const register = asyncHandler(
   },
 );
 
+export const login = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { identifier, password } = req.body;
+    const user = await new User().login(identifier, password);
+    
+    res.cookie("accessToken", user.data.accessToken, {
+      ...baseCookieOptions,
+      maxAge: user.data.accessTokenExpiration,
+    });
+    res.cookie("refreshToken", user.data.refreshToken, {
+      ...baseCookieOptions,
+      maxAge: user.data.refreshTokenExpiration ,
+    });
+
+    return res
+      .status(StatusCodes.OK)
+      .json(new ApiResponse(user.success, user.message, user.data));
+  },
+);
+
+
 export const verifyRegisterOtp = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { otp }: { otp: string } = req.body;

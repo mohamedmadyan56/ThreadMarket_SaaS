@@ -126,7 +126,7 @@ model Brand {
   @@map("brands")
 }
 
-enum BrandDocType {
+enum BrandDocType{
   trademark_certificate
   business_registration
   representative_id

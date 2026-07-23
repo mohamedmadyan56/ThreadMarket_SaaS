@@ -8,9 +8,11 @@ import {
   register,
   verifyRegisterOtp,
   logout,
+  login,
 } from "../controllers/user.controllers";
 import {
   forgetPasswordSchema,
+  loginSchema,
   otpSchema,
   registerSchema,
   resetPasswordSchema,
@@ -19,6 +21,12 @@ import { isAuthenticated } from "../middlewares/isAuthenticated";
 import { upload } from "../utils/multer";
 const router = Router();
 
+
+router.post(
+  "/login",
+  validationMiddleware(loginSchema),
+  login
+)
 router.post(
   "/register",
   validationMiddleware(registerSchema),
