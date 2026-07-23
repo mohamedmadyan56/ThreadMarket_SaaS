@@ -25,6 +25,17 @@ enum otpPurpose {
   signup
 }
 
+enum orderStatus {
+  pending
+  accepted
+  rejected
+  packing
+  shipping
+  delivering
+  delivered
+  returned
+}
+
 model User {
   id             String      @id @unique @default(uuid()) @db.Uuid
   username       String
@@ -42,9 +53,9 @@ model User {
   refreshToken   String?
   created_At     DateTime    @default(now())
   updated_At     DateTime    @default(now())
-  // cart Cart
-  //wishlist Wishlist
-  //orders Order[]
+  cart           Cart?
+  wishlist       wishlist?
+  orders         Order[]
 
   brand               Brand?
   reviewedBrandDocs   BrandDocument[] @relation("BrandDocumentReviewer")
@@ -56,6 +67,7 @@ model User {
   brandDocumentId     String?         @db.Uuid
   brandFollowers      BrandFollower[]
   reviews             Review[]
+  wishlistUserId      String          @db.Uuid
 }
 
 enum BrandVerificationTier {
@@ -109,6 +121,7 @@ model Brand {
   // chatThreads        ChatThread[]
   // adCampaigns        AdCampaign[]
   // rankingScore       RankingScore?
+  orderBrands OrderBrand[]
 
   @@map("brands")
 }
@@ -125,6 +138,13 @@ enum BrandDocType{
   invoice_sample
 }
 
+enum courierDocuments {
+  nationalId
+  drivingLicense
+  vehicleRegistration
+  plateNumber
+}
+
 enum BrandDocRejectionReason {
   illegible
   expired
@@ -139,17 +159,17 @@ enum BrandDocRejectionReason {
 }
 
 model BrandDocument {
-  id         String    @id @default(uuid()) @map("document_id") @db.Uuid
-  brandId    String    @map("brand_id") @db.Uuid
-  docType    BrandDocType    @map("doc_type")
-  fileUrl    String    @map("file_url")
-  reviewedBy String?   @map("reviewed_by") @db.Uuid
-  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz
-  status     String    @default("pending") @db.VarChar(20)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
-
-  brand    Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  reviewer User? @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
+  id              String                  @id @default(uuid()) @map("document_id") @db.Uuid
+  brandId         String                  @map("brand_id") @db.Uuid
+  docType         String                  @map("doc_type") @db.VarChar(40)
+  fileUrl         String                  @map("file_url")
+  reviewedBy      String?                 @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?               @map("reviewed_at") @db.Timestamptz
+  status          String                  @default("pending") @db.VarChar(20)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  rejectionReason BrandDocRejectionReason
+  brand           Brand                   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reviewer        User?                   @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
 
   @@map("brand_documents")
 }
@@ -178,37 +198,41 @@ model BrandFollower {
 }
 
 model Product {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  media       Json[]
-  description String
-  brandId     String   @map("brand_id") @db.Uuid
-  categoryId  String   @map("category_id") @db.Uuid
-  price       Decimal  @db.Decimal(10, 2)
-  discount    Int?     @default(0)
-  viewCount   Int      @default(0) @map("view_count")
-  rating      Decimal  @default(0) @db.Decimal(2, 1)
-  available   Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz
-
-  brand    Brand     @relation(fields: [brandId], references: [id])
-  category Category  @relation(fields: [categoryId], references: [id])
-  reviews  Review[]
-  variants Variant[]
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
+  media          Json[]
+  description    String
+  brandId        String    @map("brand_id") @db.Uuid
+  categoryId     String    @map("category_id") @db.Uuid
+  price          Decimal   @db.Decimal(10, 2)
+  discount       Int?      @default(0)
+  viewCount      Int       @default(0) @map("view_count")
+  rating         Decimal   @default(0) @db.Decimal(2, 1)
+  available      Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  brand          Brand     @relation(fields: [brandId], references: [id])
+  category       Category  @relation(fields: [categoryId], references: [id])
+  reviews        Review[]
+  variants       Variant[]
+  wishlist       wishlist? @relation(fields: [wishlistUserId], references: [userId])
+  wishlistUserId String?   @db.Uuid
 
   @@map("products")
 }
 
 model Variant {
-  id        String @id @default(uuid()) @db.Uuid
-  productId String @map("product_id") @db.Uuid
-  color     String
-  size      String
-  stock     Int    @default(0)
-  sold      Int    @default(0)
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id           String  @id @default(uuid()) @db.Uuid
+  productId    String  @map("product_id") @db.Uuid
+  color        String
+  size         String
+  stock        Int     @default(0)
+  sold         Int     @default(0)
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cart         Cart    @relation(fields: [cartId], references: [id])
+  cartId       String  @unique @db.Uuid
+  order        Order?  @relation(fields: [orderOrderId], references: [orderId])
+  orderOrderId String? @db.Uuid
 
   @@unique([productId, color, size])
   @@map("variants")
@@ -231,4 +255,78 @@ model Review {
   content   String
   userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Cart {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  user         User      @relation(fields: [userId], references: [id])
+  products     Variant[]
+  discount     Int?
+  cartNote     String?
+  userLocation String
+  userNumber   String
+  price        Int
+  totalPrice   Int
+}
+
+model wishlist {
+  userId   String    @id @unique @db.Uuid
+  user     User      @relation(fields: [userId], references: [id])
+  products Product[]
+}
+
+model Order {
+  orderId         String       @id @default(uuid()) @db.Uuid
+  userId          String       @db.Uuid
+  user            User         @relation(fields: [userId], references: [id])
+  brands          OrderBrand[]
+  products        Variant[]
+  discount        Int?
+  status          orderStatus  @default(pending)
+  otp             String
+  price           Int
+  totalPrice      Int
+  address         String
+  phoneNumber     String
+  deliveryCId     String       @unique @db.Uuid
+  deliveryCompany D_Company    @relation(fields: [deliveryCId], references: [deliveryCompany])
+  courier         Courier?     @relation(fields: [courierId], references: [id])
+  courierId       String?      @db.Uuid
+}
+
+// This model for one to many relation that fit splitting the Order into many brands
+model OrderBrand {
+  orderId String @db.Uuid
+  brandId String @db.Uuid
+  order   Order  @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  brand   Brand  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@id([orderId, brandId])
+}
+
+model D_Company {
+  deliveryCompany String    @id @default(uuid()) @db.Uuid
+  name            String
+  address         String
+  phoneNumber     String
+  isVerified      Boolean   @default(false)
+  isBanned        Boolean   @default(false)
+  couriers        Courier[]
+  orders          Order[]
+  balance         Int
+}
+
+model Courier {
+  id              String             @id @default(uuid()) @db.Uuid
+  photo_url       String
+  photo_id        String
+  phoneNumber     String
+  documents       courierDocuments[]
+  plateNumber     String
+  isVerified      Boolean            @default(false)
+  isBanned        Boolean            @default(false)
+  orders          Order[]
+  delieveryCId    String             @unique @db.Uuid
+  deliveryCompany D_Company          @relation(fields: [delieveryCId], references: [deliveryCompany])
 }
