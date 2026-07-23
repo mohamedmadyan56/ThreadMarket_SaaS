@@ -3,11 +3,13 @@ import { ENV } from "./helpers/ENV";
 import { connectDB } from "./utils/connectDB";
 import userRouter from "./routers/user.router";
 import { StatusCodes } from "http-status-codes";
+import brandRouter from "./routers/brand.router";
 const app = express();
 connectDB();
 
 app.use(express.json());
 app.use("/api/v1/auth", userRouter);
+app.use("/api/v1/brands", brandRouter);
 
 app.use((err: any, req: any, res: any, next: any) => {
   res.status(err.statusCode || 500).json({
