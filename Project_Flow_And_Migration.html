@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadMarket - تدفق المشروع وخطة التحويل</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    line-height: 1.9;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: white;
+    padding: 50px 0 30px;
+    text-align: center;
+    border-bottom: 3px solid #e94560;
+  }
+  .header h1 { font-size: 2.5em; font-weight: 800; background: linear-gradient(90deg, #e94560, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .sub { opacity: 0.8; font-size: 1.1em; margin-top: 8px; }
+
+  .section {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 25px 0;
+    border: 1px solid #2a2a4a;
+  }
+  .section h2 { color: #e94560; font-size: 1.6em; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #2a2a4a; }
+  .section h3 { color: #ff9f43; font-size: 1.2em; margin: 25px 0 12px; }
+  .section p { margin: 10px 0; color: #c0c0d0; }
+  .section ul, .section ol { padding-right: 22px; margin: 10px 0; }
+  .section ul li, .section ol li { margin: 6px 0; color: #c0c0d0; }
+
+  pre {
+    background: #0d0d1a;
+    color: #e0e0e0;
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.82em;
+    direction: ltr;
+    text-align: left;
+    margin: 15px 0;
+    border: 1px solid #2a2a4a;
+  }
+  .k { color: #569cd6; }
+  .s { color: #ce9178; }
+  .f { color: #dcdcaa; }
+  .c { color: #6a9955; font-style: italic; }
+  .v { color: #9cdcfe; }
+  .n { color: #b5cea8; }
+
+  .note { background: #1a2a2a; border-right: 4px solid #17a2b8; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .warn { background: #2a1a1a; border-right: 4px solid #e94560; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .tip { background: #1a2a1a; border-right: 4px solid #28a745; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .success { background: #1a2a1a; border-right: 4px solid #28a745; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+
+  .flow { display: flex; flex-direction: column; align-items: center; margin: 25px 0; direction: ltr; }
+  .flow-step { background: #16213e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 12px 24px; margin: 3px; text-align: center; min-width: 220px; }
+  .flow-step.red { border-color: #e94560; background: #2a1a2a; }
+  .flow-step.blue { border-color: #54a0ff; background: #1a1a3e; }
+  .flow-step.green { border-color: #28a745; background: #1a2a1a; }
+  .flow-step.gray { border-color: #666; background: #1a1a1a; }
+  .flow-arrow { color: #e94560; font-size: 1.2em; margin: 2px 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em; }
+  th { background: #0d0d1a; color: #e94560; padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #e94560; }
+  td { padding: 10px 12px; border-bottom: 1px solid #2a2a4a; color: #c0c0d0; }
+  tr:hover td { background: #1a1a2e; }
+
+  .file-ref { display: inline-block; background: #2a2a4a; color: #54a0ff; padding: 3px 12px; border-radius: 4px; font-family: monospace; font-size: 0.85em; direction: ltr; }
+
+  .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0; }
+  @media (max-width: 768px) { .code-compare { grid-template-columns: 1fr; } }
+  .code-box { background: #0d0d1a; border-radius: 8px; padding: 15px; border: 1px solid #2a2a4a; overflow-x: auto; }
+  .code-box .title { color: #e94560; font-weight: 600; margin-bottom: 10px; font-size: 0.9em; }
+  .code-box code { font-family: 'Consolas', monospace; font-size: 0.8em; white-space: pre; }
+  .file-tree { font-family: 'Consolas', monospace; direction: ltr; text-align: left; background: #0d0d1a; padding: 15px; border-radius: 8px; font-size: 0.85em; line-height: 1.7; }
+  .file-tree .del { color: #e94560; text-decoration: line-through; }
+  .file-tree .add { color: #28a745; }
+  .file-tree .keep { color: #c0c0d0; }
+  .file-tree .arrow { color: #ff9f43; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 600; }
+  .badge-red { background: #2a1a1a; color: #e94560; }
+  .badge-green { background: #1a2a1a; color: #28a745; }
+  .badge-blue { background: #1a1a3e; color: #54a0ff; }
+
+  @media print { body { background: white; color: #333; } .section { background: white; border-color: #ddd; } pre { background: #f5f5f5; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>تدفق المشروع & خطة التحويل</h1>
+  <div class="sub">ازاي الكود بيشتغل حالياً → إزاي هنحوله لهيكل احترافي</div>
+</div>
+
+<div class="container">
+
+<!-- ==================== INDEX ==================== -->
+<div class="section">
+  <h2>📋 الفهرس</h2>
+  <ol>
+    <li><a href="#current-flow" style="color:#54a0ff;">التدفق الحالي — ازاي الـ Request بيتمشى</a></li>
+    <li><a href="#current-struct" style="color:#54a0ff;">هيكل المشروع الحالي (فعلي)</a></li>
+    <li><a href="#planned-struct" style="color:#54a0ff;">هيكل المشروع المفترض (READme)</a></li>
+    <li><a href="#whats-wrong" style="color:#54a0ff;">إيه اللي غلط في الهيكل الحالي</a></li>
+    <li><a href="#example-current" style="color:#54a0ff;">مثال عملي: Login — حالياً</a></li>
+    <li><a href="#example-after" style="color:#54a0ff;">مثال عملي: Login — بعد التحويل</a></li>
+    <li><a href="#folder-migration" style="color:#54a0ff;">خطة تحويل الفولدرات</a></li>
+    <li><a href="#step-by-step" style="color:#54a0ff;">خطة التنفيذ خطوة بخطوة</a></li>
+    <li><a href="#priority" style="color:#54a0ff;">الأولوية: إيه نشتغل الأول</a></li>
+  </ol>
+</div>
+
+<!-- ==================== 1. CURRENT FLOW ==================== -->
+<div class="section" id="current-flow">
+  <h2>1. التدفق الحالي — ازاي الـ Request بيتمشى</h2>
+  <p>لما العميل يعمل طلب (مثلاً POST /login)، الكود الحالي بيتمشى بالترتيب ده:</p>
+
+  <div class="flow">
+    <div class="flow-step red">١. HTTP Request (POST /api/v1/auth/login)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step gray">٢. Express Server (server.ts)<br>express.json() middleware</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step gray">٣. Router (routers/user.router.ts)<br>يطابق المسار /api/v1/auth/login</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step blue">٤. Validation Middleware<br>Zod — يتحقق من شكل البيانات</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step green">٥. Controller (controllers/user.controllers.ts)<br>يستقبل req, ينادي User.class</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step green">٦. User.class (classes/User.class.ts)<br>Business Logic — login()</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step blue">٧. Prisma ORM (utils/connectDB.ts)<br>Queries قاعدة البيانات</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step green">٨. User.class يرجع الـ data</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step green">٩. Controller يضبط الـ cookies ويرد Response</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step red">١٠. HTTP Response (JSON + Cookies)</div>
+  </div>
+
+  <div class="tip">
+    <strong>ملاحظة:</strong> مفيش isAuthenticated middleware في login لأنه route عام. لكن routes protected زي logout بتضيف خطوة إضافية بعد الـ Zod وقبل الـ Controller.
+  </div>
+</div>
+
+<!-- ==================== 2. CURRENT STRUCTURE ==================== -->
+<div class="section page-break" id="current-struct">
+  <h2>2. هيكل المشروع الحالي (فعلي على الأرض)</h2>
+
+  <pre>src/
+├── <span class="v">server.ts</span>                <span class="c">// ← Entry point</span>
+├── <span class="v">classes/</span>                  <span class="c">// ❌ مش service layer — كلاس فيه middleware</span>
+│   ├── User.class.ts
+│   ├── Brand.class.ts
+│   ├── Otp.class.ts
+│   ├── ApiError.ts
+│   └── ApiResponse.ts
+├── <span class="v">controllers/</span>             <span class="c">// طبقة الـ HTTP handlers</span>
+│   ├── user.controllers.ts
+│   └── brand.controllers.ts
+├── <span class="v">routers/</span>                  <span class="c">// تعريف الـ routes</span>
+│   ├── user.router.ts
+│   └── brand.router.ts
+├── <span class="v">validators/</span>               <span class="c">// Zod schemas</span>
+│   ├── user.validators.ts
+│   └── brand.validators.ts
+├── <span class="v">middlewares/</span>               <span class="c">// Auth + Authorization + Validation</span>
+│   ├── isAuthenticated.ts
+│   ├── isAuthorized.ts
+│   └── validationMiddleware.ts
+├── <span class="v">helpers/</span>                  <span class="c">// دوال مساعدة</span>
+│   ├── ENV.ts
+│   ├── generateTokens.ts
+│   ├── asyncHandler.ts
+│   ├── sendEmail.ts
+│   ├── emailTemplates.ts
+│   ├── removeLocalFiles.ts
+│   └── seed.ts
+└── <span class="v">utils/</span>                    <span class="c">// أدوات عامة</span>
+    ├── connectDB.ts
+    ├── emailTransporter.ts
+    ├── cloudinary.ts
+    └── multer.ts</pre>
+
+  <div class="warn">
+    <strong>المشكلة:</strong> الملفات مش arranged حسب الموديول (module). كل حاجة مبعثرة — كلاسيز Auth جنب Brand جنب Otp جنب أدوات مساعدة.
+  </div>
+</div>
+
+<!-- ==================== 3. PLANNED STRUCTURE ==================== -->
+<div class="section page-break" id="planned-struct">
+  <h2>3. هيكل المشروع المفترض (حسب الـ README)</h2>
+
+  <pre>src/
+├── <span class="v">server.ts</span>
+├── <span class="v">config/</span>
+│   ├── env.ts
+│   ├── database.ts
+│   └── app.ts
+├── <span class="v">shared/</span>
+│   ├── types/
+│   ├── middleware/
+│   ├── utils/
+│   └── errors/
+└── <span class="v">modules/</span>
+    ├── <span class="v">auth/</span>
+    │   ├── auth.routes.ts
+    │   ├── auth.controller.ts
+    │   ├── auth.service.ts
+    │   ├── auth.model.ts
+    │   └── auth.validators.ts
+    ├── <span class="v">brand/</span>
+    │   ├── brand.routes.ts
+    │   ├── brand.controller.ts
+    │   ├── brand.service.ts
+    │   ├── brand.model.ts
+    │   └── brand.validators.ts
+    ├── <span class="v">product/</span>   <span class="c">// (مستقبلًا)</span>
+    ├── <span class="v">order/</span>     <span class="c">// (مستقبلًا)</span>
+    ├── <span class="v">...</span>
+    └── <span class="v">fraud/</span>    <span class="c">// (مستقبلًا)</span></pre>
+
+  <div class="tip">
+    <strong>💡 الفكرة:</strong> كل موديول مستقل بذاته — عنده routes، controller، service، model، validators. لو عايز تفصل أي موديول لـ microservice بعدين، بتنسخ فولدر كامل.
+  </div>
+</div>
+
+<!-- ==================== 4. WHAT'S WRONG ==================== -->
+<div class="section page-break" id="whats-wrong">
+  <h2>4. إيه اللي غلط في الهيكل الحالي؟</h2>
+
+  <table>
+    <tr><th>#</th><th>المشكلة</th><th>التفصيل</th></tr>
+    <tr>
+      <td>1</td>
+      <td><strong>❌ Service بترجع Middleware</strong></td>
+      <td>
+        <code>User.class.refreshAccessToken()</code> مبتنفذش الحالة — بترجع function محتاجة (req, res, next).<br>
+        ده معناه إن الـ Service بيعتمد على Express objects (req/res)، وده غلط لأن Service المفروض يبقى pure business logic.
+      </td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><strong>❌ ملفات مبعثرة مش موديولات</strong></td>
+      <td>
+        دلوقتي عندنا controllers/, classes/, validators/ كلها منفصلة. كل موديول مفروض يكون في فولدر واحد.<br>
+        - <code>classes/User.class.ts</code> فيه Auth + Brand logic مع بعض<br>
+        - <code>controllers/user.controllers.ts</code> فيه كل Auth controllers<br>
+        لو عايز تضيف موديول جديد، هتعمل فولدر جديد ولا هتزود في الملفات القديمة؟
+      </td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><strong>❌ مفيش Data Layer (Repository)</strong></td>
+      <td>
+        كل queries الـ Prisma جوا الـ Service مباشرة — <code>prisma.user.findFirst()</code>, <code>prisma.user.update()</code> إلخ.<br>
+        في الشركات، بيفصلوا queries في <code>auth.model.ts</code> أو <code>auth.repository.ts</code> عشان:<br>
+        - Testing أسهل (تقدر تستخدم mock للـ repository)<br>
+        - لو غيرت ORM مستقبلًا (Prisma → Drizzle) التغيير في مكان واحد
+      </td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><strong>❌ Response Logic في Service</strong></td>
+      <td>
+        دوال <code>logout()</code>, <code>verifyRegisterOtp()</code>, <code>verifyOtp()</code>, <code>resetPassword()</code> كلها بتستدعي <code>res.clearCookie()</code> جوا الـ Class method.<br>
+        الـ Service مش المفروض يعرف حاجة عن الـ Response — ده شغل الـ Controller.
+      </td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><strong>❌ دوال static في الـ Class</strong></td>
+      <td>
+        <code>User.uploadPicture()</code> و <code>User.deletePicture()</code> static methods — ده مش design pattern واضح. المفروض يكون في separate service للـ media أو utility.
+      </td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>❌ await jwt.verify</strong></td>
+      <td>
+        <code>await jwt.verify(...)</code> — jwt.verify مش async أصلاً. مش غلط فادح لكن بيضلل.
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- ==================== 5. EXAMPLE CURRENT ==================== -->
+<div class="section page-break" id="example-current">
+  <h2>5. مثال عملي: Login — كما هو حالياً</h2>
+
+  <p>الـ Controller بينادي الـ Class والـ Class بيعمل كل حاجة:</p>
+
+  <div class="code-compare">
+    <div class="code-box">
+      <div class="title">📄 controllers/user.controllers.ts</div>
+      <code><span class="c">// Controller بسيط — بس بينادي الـ class</span>
+<span class="k">export const</span> <span class="f">login</span> = <span class="f">asyncHandler</span>(
+  <span class="k">async</span> (req, res) => {
+    <span class="k">const</span> { identifier, password } = req.body;
+
+    <span class="c">// ← استدعاء Class مباشرة</span>
+    <span class="k">const</span> user = <span class="k">await</span> <span class="k">new</span> <span class="v">User</span>().<span class="f">login</span>(identifier, password);
+
+    <span class="c">// ← Controller بيضبط cookies</span>
+    res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, user.data.accessToken, {...});
+    res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, user.data.refreshToken, {...});
+
+    <span class="k">return</span> res.<span class="f">json</span>(<span class="k">new</span> <span class="v">ApiResponse</span>(...));
+  }
+);</code>
+    </div>
+    <div class="code-box">
+      <div class="title">📄 classes/User.class.ts — login()</div>
+      <code><span class="c">// الـ Class بيعمل كل حاجة:</span>
+<span class="c">// 1. البحث في DB</span>
+<span class="c">// 2. التحقق من password</span>
+<span class="c">// 3. lockout logic</span>
+<span class="c">// 4. توليد tokens</span>
+<span class="c">// 5. تحديث DB</span>
+<span class="c">// 6. إرجاع data</span>
+<span class="k">async</span> <span class="f">login</span>(identifier, password) {
+  <span class="k">const</span> user = <span class="k">await</span> prisma.user.<span class="f">findFirst</span>({...});
+
+  <span class="k">if</span> (user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>())
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"Account locked"</span>, <span class="n">403</span>);
+
+  <span class="k">const</span> valid = <span class="k">await</span> bcrypt.<span class="f">compare</span>(password, user.password);
+  <span class="k">if</span> (!valid) {
+    <span class="c">// تحديث failedLoginAttempts</span>
+    <span class="k">await</span> prisma.user.<span class="f">update</span>({...});
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"Invalid credentials"</span>, <span class="n">401</span>);
+  }
+
+  <span class="k">const</span> accessToken = <span class="f">generateAccessToken</span>({ id: user.id });
+  <span class="k">const</span> refreshToken = <span class="f">generateRefreshToken</span>({ id: user.id });
+
+  <span class="k">await</span> prisma.user.<span class="f">update</span>({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: <span class="k">null</span>, refreshToken }
+  });
+
+  <span class="k">return</span> { success: <span class="k">true</span>, data: { accessToken, refreshToken, ... } };
+}</code>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>🔍 ملاحظة:</strong> طريقة login() <strong>مش من أسوأ المشاكل</strong> — بترجع data عادي ومش بتستدعي res.cookie. المشكلة الأكبر في دوال تانية (logout, verifyOtp, refreshAccessToken) اللي بترجع middleware بتاخد req, res, next.
+  </div>
+</div>
+
+<!-- ==================== 6. EXAMPLE AFTER ==================== -->
+<div class="section page-break" id="example-after">
+  <h2>6. مثال عملي: Login — بعد التحويل (Standard)</h2>
+
+  <div class="code-compare">
+    <div class="code-box">
+      <div class="title">📄 modules/auth/auth.controller.ts — <span class="badge badge-green">NEW</span></div>
+      <code><span class="c">// Controller بيستدعي Service ويرد Response</span>
+<span class="k">export const</span> <span class="f">login</span> = <span class="f">asyncHandler</span>(
+  <span class="k">async</span> (req, res) => {
+    <span class="k">const</span> { identifier, password } = req.body;
+
+    <span class="c">// ← استدعاء Service — بياخد data ويرجع data</span>
+    <span class="k">const</span> result = <span class="k">await</span> authService.<span class="f">login</span>(identifier, password);
+
+    <span class="c">// ← الـ Controller هو اللي يتعامل مع cookies</span>
+    res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.accessToken, {...});
+    res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.refreshToken, {...});
+
+    <span class="k">return</span> res.<span class="f">json</span>({ success: <span class="k">true</span>, data: result });
+  }
+);</code>
+    </div>
+    <div class="code-box">
+      <div class="title">📄 modules/auth/auth.service.ts — <span class="badge badge-green">NEW</span></div>
+      <code><span class="c">// Service بيركز على Business Logic بس</span>
+<span class="k">class</span> <span class="v">AuthService</span> {
+  <span class="k">async</span> <span class="f">login</span>(identifier: string, password: string) {
+    <span class="c">// ← Data Layer (Model/Repository)</span>
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findUserByIdentifier</span>(identifier);
+
+    <span class="k">if</span> (user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>())
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account locked"</span>, <span class="n">403</span>);
+
+    <span class="k">const</span> valid = <span class="k">await</span> bcrypt.<span class="f">compare</span>(password, user.password);
+    <span class="k">if</span> (!valid) {
+      <span class="k">await</span> authModel.<span class="f">incrementFailedAttempts</span>(user.id);
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid credentials"</span>, <span class="n">401</span>);
+    }
+
+    <span class="k">const</span> tokens = tokenService.<span class="f">generateTokens</span>({ id: user.id });
+    <span class="k">await</span> authModel.<span class="f">updateAfterLogin</span>(user.id, tokens.refreshToken);
+
+    <span class="k">return</span> { ...tokens, user: <span class="f">sanitizeUser</span>(user) };
+  }
+}</code>
+    </div>
+  </div>
+  <div class="code-compare">
+    <div class="code-box">
+      <div class="title">📄 modules/auth/auth.model.ts — <span class="badge badge-green">NEW</span></div>
+      <code><span class="c">// Data Layer — بس Queries قاعدة البيانات</span>
+<span class="k">class</span> <span class="v">AuthModel</span> {
+  <span class="k">async</span> <span class="f">findUserByIdentifier</span>(identifier: string) {
+    <span class="k">return</span> prisma.user.<span class="f">findFirst</span>({
+      where: { <span class="v">OR</span>: [{ email: identifier }, { phone: identifier }] }
+    });
+  }
+
+  <span class="k">async</span> <span class="f">incrementFailedAttempts</span>(userId: string) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({...});
+  }
+
+  <span class="k">async</span> <span class="f">updateAfterLogin</span>(userId: string, refreshToken: string) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({...});
+  }
+}</code>
+    </div>
+    <div class="code-box">
+      <div class="title">📄 modules/auth/auth.validators.ts — <span class="badge badge-green">NEW</span></div>
+      <code><span class="c">// حاطط Zod schemas جنب الموديول مش بعيد</span>
+<span class="k">import</span> { z } <span class="k">from</span> <span class="s">"zod"</span>;
+
+<span class="k">export const</span> loginSchema = z.object({
+  identifier: z.string().min(1),
+  password: z.string().min(6),
+});</code>
+    </div>
+  </div>
+
+  <div class="success">
+    <strong>✅ خلينا نشوف الفرق:</strong><br>
+    <strong>قبل:</strong> Controller ينادي Class → Class فيه Prisma queries + business logic + أحيانًا response logic<br>
+    <strong>بعد:</strong> Controller → Service (business logic) → Model (queries) <br>
+    كل طبقة ليها مسؤولية واحدة واضحة. Testing سهل — تقدر تختبر Service بدون Express، وتختبر Model بدون business logic.
+  </div>
+</div>
+
+<!-- ==================== 7. FOLDER MIGRATION ==================== -->
+<div class="section page-break" id="folder-migration">
+  <h2>7. خطة تحويل الفولدرات — من الحالي للمستهدف</h2>
+
+  <pre><span class="c">/* الحالي */</span>                              <span class="arrow">→</span>   <span class="c">/* بعد التحويل */</span>
+
+<span class="del">src/classes/User.class.ts</span>                 <span class="arrow">→</span>   <span class="add">src/modules/auth/auth.service.ts</span>
+<span class="del">src/classes/Brand.class.ts</span>                <span class="arrow">→</span>   <span class="add">src/modules/brand/brand.service.ts</span>
+<span class="del">src/classes/Otp.class.ts</span>                  <span class="arrow">→</span>   <span class="add">src/shared/utils/otp.ts</span>
+<span class="del">src/classes/ApiError.ts</span>                   <span class="arrow">→</span>   <span class="add">src/shared/errors/AppError.ts</span>
+<span class="del">src/classes/ApiResponse.ts</span>                <span class="arrow">→</span>   <span class="add">src/shared/utils/apiResponse.ts</span>
+
+<span class="del">src/controllers/user.controllers.ts</span>       <span class="arrow">→</span>   <span class="add">src/modules/auth/auth.controller.ts</span>
+<span class="del">src/controllers/brand.controllers.ts</span>      <span class="arrow">→</span>   <span class="add">src/modules/brand/brand.controller.ts</span>
+
+<span class="del">src/routers/user.router.ts</span>                <span class="arrow">→</span>   <span class="add">src/modules/auth/auth.routes.ts</span>
+<span class="del">src/routers/brand.router.ts</span>               <span class="arrow">→</span>   <span class="add">src/modules/brand/brand.routes.ts</span>
+
+<span class="del">src/validators/user.validators.ts</span>          <span class="arrow">→</span>   <span class="add">src/modules/auth/auth.validators.ts</span>
+<span class="del">src/validators/brand.validators.ts</span>         <span class="arrow">→</span>   <span class="add">src/modules/brand/brand.validators.ts</span>
+
+<span class="keep">src/middlewares/isAuthenticated.ts</span>         <span class="arrow">→</span>   <span class="add">src/shared/middleware/authenticate.ts</span>
+<span class="keep">src/middlewares/isAuthorized.ts</span>            <span class="arrow">→</span>   <span class="add">src/shared/middleware/authorize.ts</span>
+<span class="keep">src/middlewares/validationMiddleware.ts</span>    <span class="arrow">→</span>   <span class="add">src/shared/middleware/validate.ts</span>
+
+<span class="keep">src/helpers/asyncHandler.ts</span>               <span class="arrow">→</span>   <span class="add">src/shared/utils/asyncHandler.ts</span>
+<span class="keep">src/helpers/ENV.ts</span>                        <span class="arrow">→</span>   <span class="add">src/config/env.ts</span>
+<span class="keep">src/helpers/generateTokens.ts</span>             <span class="arrow">→</span>   <span class="add">src/shared/utils/tokens.ts</span>
+<span class="keep">src/helpers/sendEmail.ts</span>                  <span class="arrow">→</span>   <span class="add">src/shared/utils/email.ts</span>
+<span class="keep">src/helpers/emailTemplates.ts</span>             <span class="arrow">→</span>   <span class="add">src/shared/utils/emailTemplates.ts</span>
+
+<span class="keep">src/utils/connectDB.ts</span>                    <span class="arrow">→</span>   <span class="add">src/config/database.ts</span>
+<span class="keep">src/utils/cloudinary.ts</span>                   <span class="arrow">→</span>   <span class="add">src/shared/utils/cloudinary.ts</span>
+<span class="keep">src/utils/multer.ts</span>                       <span class="arrow">→</span>   <span class="add">src/shared/utils/upload.ts</span>
+
+<span class="keep">src/server.ts</span>                             <span class="arrow">→</span>   <span class="add">src/server.ts</span> (<span class="c">تحديث imports بس</span>)
+
+<span class="add">                                          + src/modules/auth/auth.model.ts</span>
+<span class="add">                                          + src/shared/event-bus.ts</span></pre>
+</div>
+
+<!-- ==================== 8. PLAN ==================== -->
+<div class="section page-break" id="step-by-step">
+  <h2>8. خطة التنفيذ — خطوة بخطوة</h2>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">1</div>
+    <div><h4 style="color:#ff9f43;">إنشاء الهيكل الجديد (First Commit — لا تغيير في الكود)</h4>
+    <p>ننشئ الفولدرات الجديدة: <code>src/modules/auth/</code>, <code>src/modules/brand/</code>, <code>src/shared/</code>, <code>src/config/</code><br>
+    ننقل الملفات كما هي (Copy) بدون تغيير سطر واحد. نتأكد إن المشروع لسه شغال.</p></div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">2</div>
+    <div><h4 style="color:#ff9f43;">إصلاح الـ Service Layer — دوال "ترجع middleware"</h4>
+    <p>أهم خطوة. نعدل الدوال دي في <code>auth.service.ts</code> عشان ترجع data مش middleware:</p>
+    <pre><span class="c">// قبل — بترجع middleware</span>
+<span class="k">async</span> <span class="f">refreshAccessToken</span>() {
+  <span class="k">return</span> <span class="k">async</span> (req, res, next) => {
+    <span class="c">// logic هنا...</span>
+    <span class="k">return</span> { accessToken, refreshToken };
+  };
+}
+
+<span class="c">// بعد — بتاخد token وترجع data</span>
+<span class="k">async</span> <span class="f">refreshAccessToken</span>(incomingRefreshToken: <span class="v">string</span>) {
+  <span class="c">// logic هنا</span>
+  <span class="k">return</span> { accessToken, refreshToken };
+}</pre>
+    </div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">3</div>
+    <div><h4 style="color:#ff9f43;">فصل Response Logic من الـ Service</h4>
+    <p>أي حاجة بتستدعي <code>res.cookie()</code> أو <code>res.clearCookie()</code> جوا الـ Class ننقلها للـ Controller.</p></div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">4</div>
+    <div><h4 style="color:#ff9f43;">إنشاء Data Layer (Model/Repository)</h4>
+    <p>ننقل كل استدعاءات Prisma من الـ Service إلى <code>auth.model.ts</code>:</p>
+    <pre><span class="c">// Service بقى بينادي Model</span>
+<span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findById</span>(id);
+<span class="k">await</span> authModel.<span class="f">updateRefreshToken</span>(userId, newToken);</pre>
+    </div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">5</div>
+    <div><h4 style="color:#ff9f43;">إضافة المفقودات في server.ts</h4>
+    <p>نضيف الـ middleware الناقصة: <code>cookie-parser</code>, <code>cors</code>, <code>helmet</code>, <code>morgan</code>, <code>express-rate-limit</code></p></div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">6</div>
+    <div><h4 style="color:#ff9f43;">مسح الفولدرات القديمة</h4>
+    <p>بعد ما نتأكد إن كل حاجة شغالة، نمسح <code>src/classes/</code>, <code>src/controllers/</code>, <code>src/routers/</code>, <code>src/validators/</code> القديمة.</p></div>
+  </div>
+
+  <div class="step" style="display:flex;align-items:flex-start;margin:15px 0;">
+    <div class="step-num" style="background:#e94560;color:white;width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;margin-left:15px;flex-shrink:0;">7</div>
+    <div><h4 style="color:#ff9f43;">اختبار كل حاجة</h4>
+    <p><code>npm run dev</code> — نتأكد إن السيرفر يشتغل وكل الـ endpoints ترجع صح.</p></div>
+  </div>
+</div>
+
+<!-- ==================== 9. PRIORITY ==================== -->
+<div class="section page-break" id="priority">
+  <h2>9. الأولوية — إيه نشتغل الأول</h2>
+
+  <table>
+    <tr><th>المرحلة</th><th>المهام</th><th>الوقت المتوقع</th></tr>
+    <tr>
+      <td><span class="badge badge-red">المرحلة ١</span></td>
+      <td>
+        <strong>إصلاح الـ bugs أولاً:</strong><br>
+        - إضافة <code>cookie-parser</code> في server.ts<br>
+        - إصلاح Prisma schema (علاقة wishlist)<br>
+        - إضافة CORS, Helmet, Morgan, Rate Limit (أو على الأقل CORS عشان الـ frontend)
+      </td>
+      <td>~30 دقيقة</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-red">المرحلة ٢</span></td>
+      <td>
+        <strong>إعادة هيكلة Auth Module:</strong><br>
+        - إنشاء <code>modules/auth/</code> بنقل الملفات<br>
+        - تحويل دوال "ترجع middleware" لترجع data<br>
+        - فصل response logic للـ Controller<br>
+        - إنشاء <code>auth.model.ts</code>
+      </td>
+      <td>~2-3 ساعات</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">المرحلة ٣</span></td>
+      <td>
+        <strong>إعادة هيكلة Brand Module:</strong><br>
+        - نفس الخطوات — نقل + تحويل + فصل
+      </td>
+      <td>~30 دقيقة</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">المرحلة ٤</span></td>
+      <td>
+        <strong>تنظيف الـ Shared / Config:</strong><br>
+        - نقل باقي الملفات (ENV, helpers, utils) للأماكن الجديدة
+      </td>
+      <td>~30 دقيقة</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-green">المرحلة ٥</span></td>
+      <td>
+        <strong>اختبار + مسح القديم:</strong><br>
+        - تشغيل <code>npm run dev</code><br>
+        - اختبار كل endpoint<br>
+        - مسح الفولدرات القديمة
+      </td>
+      <td>~1 ساعة</td>
+    </tr>
+  </table>
+
+  <div class="tip">
+    <strong>🚀 نصيحة قبل ما تبدأ:</strong><br>
+    <ol>
+      <li>اعمل <strong>Git commit</strong> للكود الحالي أولاً — عشان تقدر ترجع لو حصل مشكلة</li>
+      <li>اشتغل على <strong>فرع (branch) منفصل</strong> (<code>git checkout -b refactor/modular-monolith</code>)</li>
+      <li>في <strong>المرحلة ٢</strong>، خد دالة واحدة وعدلها بالكامل واختبرها — ميكسرش كل الدوال مرة واحدة</li>
+      <li>الهدف مش تغيير الـ Logic — الهدف هو <strong>إعادة ترتيب الكود</strong> (Restructuring مش Rewriting)</li>
+    </ol>
+  </div>
+
+  <div class="success" style="text-align:center;padding:30px;">
+    <h3 style="color:#28a745;">جاهز تبدأ التحويل؟</h3>
+    <p style="margin-top:10px;">قلّي "نبدأ" و هبدأ معاك أول مرحلة — إصلاح الـ bugs اللي في server.ts و Prisma schema.</p>
+  </div>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

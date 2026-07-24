@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ThreadMarket — خطة التحويل الكاملة (Refactor Guide)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    line-height: 1.9;
+    direction: rtl;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: white;
+    padding: 50px 0 30px;
+    text-align: center;
+    border-bottom: 3px solid #e94560;
+  }
+  .header h1 { font-size: 2.5em; font-weight: 800; background: linear-gradient(90deg, #e94560, #ff9f43); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .sub { opacity: 0.85; font-size: 1.1em; margin-top: 8px; }
+  .header .branch { color: #54a0ff; font-family: monospace; margin-top: 8px; font-size: 0.9em; }
+
+  .section {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 25px 0;
+    border: 1px solid #2a2a4a;
+  }
+  .section h2 { color: #e94560; font-size: 1.6em; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #2a2a4a; }
+  .section h3 { color: #ff9f43; font-size: 1.2em; margin: 25px 0 12px; }
+  .section h4 { color: #54a0ff; font-size: 1.05em; margin: 18px 0 8px; }
+  .section p { margin: 10px 0; color: #c0c0d0; }
+  .section ul, .section ol { padding-right: 22px; margin: 10px 0; }
+  .section ul li, .section ol li { margin: 6px 0; color: #c0c0d0; }
+
+  .step-box {
+    display: flex;
+    align-items: flex-start;
+    margin: 20px 0;
+    background: #0d0d1a;
+    padding: 18px;
+    border-radius: 10px;
+    border-right: 4px solid #ff9f43;
+  }
+  .step-num {
+    background: #e94560;
+    color: white;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-left: 15px;
+    flex-shrink: 0;
+  }
+  .step-content { flex: 1; }
+  .step-content h4 { color: #ff9f43; margin-bottom: 5px; }
+  .step-content p { margin: 0; color: #c0c0d0; font-size: 0.95em; }
+
+  pre {
+    background: #0d0d1a;
+    color: #e0e0e0;
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.8em;
+    direction: ltr;
+    text-align: left;
+    margin: 12px 0;
+    border: 1px solid #2a2a4a;
+  }
+  pre .c { color: #6a9955; font-style: italic; }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  pre .v { color: #9cdcfe; }
+  pre .n { color: #b5cea8; }
+  pre .o { color: #d4d4d4; }
+  pre .i { color: #c586c0; }
+  pre .hl { background: #2a1a1a; display: block; margin: 0 -20px; padding: 0 20px; border-right: 3px solid #e94560; }
+
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em; }
+  th { background: #0d0d1a; color: #e94560; padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #e94560; }
+  td { padding: 10px 12px; border-bottom: 1px solid #2a2a4a; color: #c0c0d0; }
+  tr:hover td { background: #1a1a2e; }
+
+  .note { background: #1a2a2a; border-right: 4px solid #17a2b8; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .warn { background: #2a1a1a; border-right: 4px solid #e94560; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .tip { background: #1a2a1a; border-right: 4px solid #28a745; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+
+  .file-ref { display: inline-block; background: #2a2a4a; color: #54a0ff; padding: 2px 10px; border-radius: 4px; font-family: monospace; font-size: 0.85em; direction: ltr; }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { margin: 10px 0; padding-right: 28px; position: relative; }
+  .checklist li::before { content: "⬜"; position: absolute; right: 0; }
+
+  .page-break { page-break-before: always; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.75em; font-weight: 600; }
+  .tag-new { background: #1a2a1a; color: #28a745; }
+  .tag-edit { background: #2a2a1a; color: #ff9f43; }
+  .tag-del { background: #2a1a1a; color: #e94560; }
+  .tag-move { background: #1a1a3e; color: #54a0ff; }
+
+  @media print { body { background: white; color: #333; } .section { background: white; border-color: #ddd; } pre { background: #f5f5f5; } .step-box { background: #f5f5f5; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>خطة التحويل الكاملة</h1>
+  <div class="sub">من الهيكل الحالي (classes/controllers) إلى Modular Monolith (modules/)</div>
+  <div class="branch">🌿 branch: refactor/architecture</div>
+</div>
+
+<div class="container">
+
+<!-- OVERVIEW -->
+<div class="section">
+  <h2>📋 نظرة عامة</h2>
+  <p>هنحول المشروع من هيكل مسطح (classes/, controllers/, routers/, validators/) إلى هيكل موديولات (modules/auth/, modules/brand/, shared/).</p>
+
+  <h3>الخطوات مختصرة:</h3>
+  <ol>
+    <li>تثبيت <code>cookie-parser</code></li>
+    <li>إنشاء الفولدرات الجديدة</li>
+    <li>إنشاء ملفات <code>config/</code> (env, database)</li>
+    <li>إنشاء ملفات <code>shared/</code> (middleware, utils, errors)</li>
+    <li>إنشاء <code>modules/auth/</code> (model, service, controller, routes, validators, token.service)</li>
+    <li>إنشاء <code>modules/brand/</code> (model, service, controller, routes, validators)</li>
+    <li>تعديل <code>server.ts</code></li>
+    <li>إصلاح Prisma schema (مشكلة <code>wishlistUserId</code>)</li>
+    <li>توليد Prisma client</li>
+    <li>اختبار الـ Compilation</li>
+    <li>حذف الملفات القديمة</li>
+    <li>Commit</li>
+  </ol>
+</div>
+
+<!-- ==================== STEP 1 ==================== -->
+<div class="section page-break">
+  <h2>1. تثبيت cookie-parser</h2>
+
+  <div class="warn">
+    <strong>ليه؟</strong> الـ <code>req.cookies</code> مش هتشتغل من غير <code>cookie-parser</code> middleware. دي مشكلة موجودة حاليًا في المشروع.
+  </div>
+
+  <pre>npm install cookie-parser @types/cookie-parser --save</pre>
+</div>
+
+<!-- ==================== STEP 2 ==================== -->
+<div class="section page-break">
+  <h2>2. إنشاء الفولدرات الجديدة</h2>
+
+  <pre>mkdir -p src/config
+mkdir -p src/shared/middleware
+mkdir -p src/shared/utils
+mkdir -p src/shared/errors
+mkdir -p src/modules/auth
+mkdir -p src/modules/brand</pre>
+
+  <div class="tip">
+    <strong>🔍 الهيكل الجديد:</strong>
+    <pre>src/
+├── server.ts                    <span class="c">// ← تعديل</span>
+├── config/
+│   ├── env.ts                   <span class="tag tag-new">جديد</span>
+│   └── database.ts              <span class="tag tag-new">جديد</span>
+├── shared/
+│   ├── middleware/
+│   │   ├── authenticate.ts      <span class="tag tag-new">جديد</span>
+│   │   ├── authorize.ts         <span class="tag tag-new">جديد</span>
+│   │   └── validate.ts          <span class="tag tag-new">جديد</span>
+│   ├── utils/
+│   │   ├── apiResponse.ts       <span class="tag tag-new">جديد</span>
+│   │   ├── asyncHandler.ts      <span class="tag tag-new">جديد</span>
+│   │   ├── email.ts             <span class="tag tag-new">جديد</span>
+│   │   ├── emailTemplates.ts    <span class="tag tag-new">جديد</span>
+│   │   ├── cloudinary.ts        <span class="tag tag-new">جديد</span>
+│   │   ├── upload.ts            <span class="tag tag-new">جديد</span>
+│   │   └── otp.ts               <span class="tag tag-new">جديد</span>
+│   └── errors/
+│       └── AppError.ts          <span class="tag tag-new">جديد</span>
+└── modules/
+    ├── auth/
+    │   ├── auth.model.ts        <span class="tag tag-new">جديد</span>
+    │   ├── auth.service.ts      <span class="tag tag-new">جديد</span>
+    │   ├── auth.controller.ts   <span class="tag tag-new">جديد</span>
+    │   ├── auth.routes.ts       <span class="tag tag-new">جديد</span>
+    │   ├── auth.validators.ts   <span class="tag tag-new">جديد</span>
+    │   └── token.service.ts     <span class="tag tag-new">جديد</span>
+    └── brand/
+        ├── brand.model.ts       <span class="tag tag-new">جديد</span>
+        ├── brand.service.ts     <span class="tag tag-new">جديد</span>
+        ├── brand.controller.ts  <span class="tag tag-new">جديد</span>
+        ├── brand.routes.ts      <span class="tag tag-new">جديد</span>
+        └── brand.validators.ts  <span class="tag tag-new">جديد</span></pre>
+  </div>
+</div>
+
+<!-- ==================== STEP 3 ==================== -->
+<div class="section page-break">
+  <h2>3. config/env.ts</h2>
+  <p><span class="file-ref">src/config/env.ts</span> — منقول من <span class="file-ref">helpers/ENV.ts</span> مع تحديث المسار</p>
+
+  <pre><span class="c">// src/config/env.ts</span>
+<span class="k">import</span> { configDotenv } <span class="k">from</span> <span class="s">"dotenv"</span>;
+configDotenv();
+
+<span class="k">export const</span> <span class="v">ENV</span> = {
+  <span class="v">PORT</span>: process.env.<span class="v">PORT</span> || <span class="n">4000</span>,
+  <span class="v">ACCESS_TOKEN_SECRET</span>: process.env.<span class="v">ACCESS_TOKEN_SECRET</span>,
+  <span class="v">ACCESS_TOKEN_EXPIRY</span>: process.env.<span class="v">ACCESS_TOKEN_EXPIRY</span>,
+  <span class="v">REFRESH_TOKEN_SECRET</span>: process.env.<span class="v">REFRESH_TOKEN_SECRET</span>,
+  <span class="v">REFRESH_TOKEN_EXPIRY</span>: process.env.<span class="v">REFRESH_TOKEN_EXPIRY</span>,
+  <span class="v">CLOUDINARY_NAME</span>: process.env.<span class="v">CLOUDINARY_NAME</span>,
+  <span class="v">CLOUDINARY_API_KEY</span>: process.env.<span class="v">CLOUDINARY_API_KEY</span>,
+  <span class="v">CLOUDINARY_API_SECRET</span>: process.env.<span class="v">CLOUDINARY_API_SECRET</span>,
+  <span class="v">EMAIL</span>: process.env.<span class="v">EMAIL</span>,
+  <span class="v">EMAIL_PASSWORD</span>: process.env.<span class="v">EMAIL_PASSWORD</span>,
+  <span class="v">DATABASE_URL</span>: process.env.<span class="v">DATABASE_URL</span>,
+  <span class="v">NODE_ENV</span>: process.env.<span class="v">NODE_ENV</span>,
+};</pre>
+
+  <p>نفس الكود القديم بالضبط — بس الملف بقى في <span class="file-ref">config/</span> بدل <span class="file-ref">helpers/</span></p>
+</div>
+
+<div class="section">
+  <h2>3b. config/database.ts</h2>
+  <p><span class="file-ref">src/config/database.ts</span> — منقول من <span class="file-ref">utils/connectDB.ts</span> مع تحديث import الـ ENV</p>
+
+  <pre><span class="c">// src/config/database.ts</span>
+<span class="k">import</span> { PrismaPg } <span class="k">from</span> <span class="s">"@prisma/adapter-pg"</span>;
+<span class="k">import</span> { PrismaClient } <span class="k">from</span> <span class="s">"../generated/prisma/client"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"./env"</span>;
+
+<span class="k">const</span> adapter = <span class="k">new</span> <span class="v">PrismaPg</span>({ connectionString: <span class="v">ENV</span>.<span class="v">DATABASE_URL</span> });
+<span class="k">const</span> prisma = <span class="k">new</span> <span class="v">PrismaClient</span>({ adapter });
+
+<span class="k">export const</span> <span class="f">connectDB</span> = <span class="k">async</span> () => {
+  <span class="k">try</span> {
+    <span class="k">await</span> prisma.<span class="f">$connect</span>();
+    console.<span class="f">log</span>(<span class="s">"Connected to database"</span>);
+  } <span class="k">catch</span> (error) {
+    console.<span class="f">log</span>(error);
+  }
+};
+
+<span class="k">export default</span> prisma;</pre>
+</div>
+
+<!-- ==================== STEP 4 ==================== -->
+<div class="section page-break">
+  <h2>4. shared/errors/AppError.ts</h2>
+  <p><span class="file-ref">src/shared/errors/AppError.ts</span> — منقول من <span class="file-ref">classes/ApiError.ts</span> بدون تغيير</p>
+
+  <pre><span class="c">// src/shared/errors/AppError.ts</span>
+<span class="k">class</span> <span class="v">AppError</span> <span class="k">extends</span> <span class="v">Error</span> {
+  errorType: <span class="v">string</span>;
+  <span class="f">constructor</span>(
+    <span class="k">public</span> message: <span class="v">string</span>,
+    <span class="k">public</span> statusCode: <span class="v">number</span>,
+  ) {
+    <span class="k">super</span>(message);
+    <span class="k">this</span>.errorType = <span class="k">this</span>.statusCode.<span class="f">toString</span>().<span class="f">startsWith</span>(<span class="s">"4"</span>)
+      ? <span class="s">"fail"</span>
+      : <span class="s">"error"</span>;
+  }
+}
+
+<span class="k">export default</span> <span class="v">AppError</span>;</pre>
+</div>
+
+<div class="section">
+  <h2>4b. shared/utils/apiResponse.ts</h2>
+  <p>منقول من <span class="file-ref">classes/ApiResponse.ts</span></p>
+
+  <pre><span class="c">// src/shared/utils/apiResponse.ts</span>
+<span class="k">class</span> <span class="v">ApiResponse</span> {
+  success: <span class="v">boolean</span>;
+  message: <span class="v">string</span>;
+  data: <span class="v">any</span>;
+
+  <span class="f">constructor</span>(success: <span class="v">boolean</span>, message: <span class="v">string</span>, data: <span class="v">any</span>) {
+    <span class="k">this</span>.success = success;
+    <span class="k">this</span>.message = message;
+    <span class="k">this</span>.data = data;
+  }
+}
+
+<span class="k">export default</span> <span class="v">ApiResponse</span>;</pre>
+</div>
+
+<div class="section">
+  <h2>4c. shared/utils/asyncHandler.ts</h2>
+  <p>منقول من <span class="file-ref">helpers/asyncHandler.ts</span></p>
+
+  <pre><span class="c">// src/shared/utils/asyncHandler.ts</span>
+<span class="k">import</span> { <span class="k">type</span> <span class="v">Request</span>, <span class="k">type</span> <span class="v">Response</span>, <span class="k">type</span> <span class="v">NextFunction</span> } <span class="k">from</span> <span class="s">"express"</span>;
+
+<span class="k">export const</span> <span class="f">asyncHandler</span> = (fn: <span class="v">Function</span>) => {
+  <span class="k">return</span> <span class="k">async</span> (req: <span class="v">Request</span>, res: <span class="v">Response</span>, next: <span class="v">NextFunction</span>) => {
+    <span class="v">Promise</span>.<span class="f">resolve</span>(<span class="f">fn</span>(req, res, next)).<span class="f">catch</span>(next);
+  };
+};</pre>
+</div>
+
+<div class="section">
+  <h2>4d. shared/utils/otp.ts</h2>
+  <p>منقول من <span class="file-ref">classes/Otp.class.ts</span></p>
+
+  <pre><span class="c">// src/shared/utils/otp.ts</span>
+<span class="k">import</span> { customAlphabet } <span class="k">from</span> <span class="s">"nanoid"</span>;
+
+<span class="k">class</span> <span class="v">Otp</span> {
+  otp: <span class="v">string</span> = <span class="s">""</span>;
+  otp_expiration_date: <span class="v">Date</span>;
+  otp_expiration_minutes: <span class="v">number</span>;
+
+  <span class="f">constructor</span>(otp_expiration_minutes: <span class="v">number</span>) {
+    <span class="k">this</span>.otp_expiration_date = <span class="k">new</span> <span class="v">Date</span>(
+      <span class="v">Date</span>.<span class="f">now</span>() + otp_expiration_minutes * <span class="n">60</span> * <span class="n">1000</span>,
+    );
+    <span class="k">this</span>.otp_expiration_minutes = otp_expiration_minutes;
+  }
+
+  <span class="f">generateOtp</span>() {
+    <span class="k">const</span> generatedOtp = <span class="f">customAlphabet</span>(<span class="s">"0123456789"</span>, <span class="n">5</span>);
+    <span class="k">return</span> (<span class="k">this</span>.otp = <span class="f">generatedOtp</span>());
+  }
+}
+
+<span class="k">export default</span> <span class="v">Otp</span>;</pre>
+</div>
+
+<!-- ==================== STEP 5 ==================== -->
+<div class="section page-break">
+  <h2>5. shared/middleware — الملفات الثلاثة</h2>
+
+  <h3>5a. shared/middleware/authenticate.ts</h3>
+  <p>منقول من <span class="file-ref">middlewares/isAuthenticated.ts</span> مع تحديث الـ imports</p>
+
+  <pre><span class="c">// src/shared/middleware/authenticate.ts</span>
+<span class="k">import</span> { <span class="k">type</span> <span class="v">Response</span>, <span class="k">type</span> <span class="v">NextFunction</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../errors/AppError"</span>;
+<span class="k">import</span> jwt <span class="k">from</span> <span class="s">"jsonwebtoken"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">export const</span> <span class="f">authenticate</span> = <span class="k">async</span> (
+  req: <span class="v">any</span>,
+  res: <span class="v">Response</span>,
+  next: <span class="v">NextFunction</span>,
+) => {
+  <span class="k">try</span> {
+    <span class="k">const</span> accessToken =
+      req.cookies?.accessToken ||
+      (req.headers?.authorization?.<span class="f">startsWith</span>(<span class="s">"Bearer"</span>) &&
+        req.headers.authorization.<span class="f">split</span>(<span class="s">" "</span>)[<span class="n">1</span>]);
+
+    <span class="k">if</span> (!accessToken) {
+      <span class="k">return</span> <span class="f">next</span>(
+        <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not authenticated"</span>, <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>),
+      );
+    }
+
+    <span class="k">const</span> user = jwt.<span class="f">verify</span>(accessToken, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!);
+    req.user = user;
+    <span class="k">return</span> <span class="f">next</span>();
+  } <span class="k">catch</span> (error) {
+    console.<span class="f">log</span>(error);
+    <span class="k">return</span> <span class="f">next</span>(
+      <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not authenticated"</span>, <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>),
+    );
+  }
+};</pre>
+
+  <h3>5b. shared/middleware/authorize.ts</h3>
+  <p>منقول من <span class="file-ref">middlewares/isAuthorized.ts</span></p>
+
+  <pre><span class="c">// src/shared/middleware/authorize.ts</span>
+<span class="k">import</span> { <span class="k">type</span> <span class="v">Response</span>, <span class="k">type</span> <span class="v">NextFunction</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../errors/AppError"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">export const</span> <span class="f">authorize</span> = (...roles: <span class="v">string</span>[]) => {
+  <span class="k">return</span> <span class="k">async</span> (req: <span class="v">any</span>, res: <span class="v">Response</span>, next: <span class="v">NextFunction</span>) => {
+    <span class="k">if</span> (!roles.<span class="f">includes</span>(req.user.role)) {
+      <span class="k">return</span> <span class="f">next</span>(
+        <span class="k">new</span> <span class="v">AppError</span>(
+          <span class="s">"You are not Authorized to Access This Route"</span>,
+          <span class="v">StatusCodes</span>.<span class="v">FORBIDDEN</span>,
+        ),
+      );
+    }
+    <span class="k">return</span> <span class="f">next</span>();
+  };
+};</pre>
+
+  <h3>5c. shared/middleware/validate.ts</h3>
+  <p>منقول من <span class="file-ref">middlewares/validationMiddleware.ts</span></p>
+
+  <pre><span class="c">// src/shared/middleware/validate.ts</span>
+<span class="k">import</span> z <span class="k">from</span> <span class="s">"zod"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../errors/AppError"</span>;
+<span class="k">import</span> { <span class="k">type</span> <span class="v">Request</span>, <span class="k">type</span> <span class="v">Response</span>, <span class="k">type</span> <span class="v">NextFunction</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">export const</span> <span class="f">validate</span> = (schema: z.<span class="v">ZodSchema</span>) => {
+  <span class="k">return</span> (req: <span class="v">Request</span>, res: <span class="v">Response</span>, next: <span class="v">NextFunction</span>) => {
+    <span class="k">try</span> {
+      <span class="k">const</span> data = { ...req.body, ...req.query, ...req.params };
+      <span class="k">const</span> parsedData = schema.<span class="f">parse</span>(data);
+      <span class="k">if</span> (parsedData) <span class="f">next</span>();
+    } <span class="k">catch</span> (error) {
+      <span class="k">if</span> (error && error <span class="k">instanceof</span> z.<span class="v">ZodError</span>) {
+        <span class="k">return</span> <span class="f">next</span>(
+          <span class="k">new</span> <span class="v">AppError</span>(error.issues[<span class="n">0</span>]!.message, <span class="v">StatusCodes</span>.<span class="v">BAD_REQUEST</span>),
+        );
+      }
+    }
+  };
+};</pre>
+</div>
+
+<!-- ==================== STEP 6 ==================== -->
+<div class="section page-break">
+  <h2>6. shared/utils — الباقي (email, cloudinary, upload)</h2>
+
+  <h3>6a. shared/utils/email.ts</h3>
+  <p>دمج ملفين <span class="file-ref">utils/emailTransporter.ts</span> + <span class="file-ref">helpers/sendEmail.ts</span></p>
+
+  <pre><span class="c">// src/shared/utils/email.ts</span>
+<span class="k">import</span> nodemailer <span class="k">from</span> <span class="s">"nodemailer"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+
+<span class="k">const</span> transporter = nodemailer.<span class="f">createTransport</span>({
+  service: <span class="s">"gmail"</span>,
+  auth: {
+    user: <span class="v">ENV</span>.<span class="v">EMAIL</span>,
+    pass: <span class="v">ENV</span>.<span class="v">EMAIL_PASSWORD</span>,
+  },
+});
+
+<span class="k">export const</span> <span class="f">sendEmail</span> = <span class="k">async</span> (
+  to: <span class="v">string</span>,
+  subject: <span class="v">string</span>,
+  html: <span class="v">string</span>,
+  text?: <span class="v">string</span>,
+) => {
+  <span class="k">try</span> {
+    <span class="k">await</span> transporter.<span class="f">sendMail</span>({ from: <span class="v">ENV</span>.<span class="v">EMAIL</span>, to, subject, text, html });
+  } <span class="k">catch</span> (error) {
+    console.<span class="f">log</span>(error);
+  }
+};</pre>
+
+  <h3>6b. shared/utils/cloudinary.ts</h3>
+  <p>منقول من <span class="file-ref">utils/cloudinary.ts</span></p>
+
+  <pre><span class="c">// src/shared/utils/cloudinary.ts</span>
+<span class="k">import</span> { v2 <span class="k">as</span> cloudinary } <span class="k">from</span> <span class="s">"cloudinary"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../errors/AppError"</span>;
+<span class="k">import</span> path <span class="k">from</span> <span class="s">"path"</span>;
+
+cloudinary.<span class="f">config</span>({
+  cloud_name: <span class="v">ENV</span>.<span class="v">CLOUDINARY_NAME</span>,
+  api_key: <span class="v">ENV</span>.<span class="v">CLOUDINARY_API_KEY</span>,
+  api_secret: <span class="v">ENV</span>.<span class="v">CLOUDINARY_API_SECRET</span>,
+});
+
+<span class="k">export const</span> <span class="f">uploadToCloudinary</span> = <span class="k">async</span> (filePath: <span class="v">string</span>, folder: <span class="v">string</span>) => {
+  <span class="k">const</span> filePathResolved = path.<span class="f">resolve</span>(filePath || <span class="s">""</span>);
+  <span class="k">const</span> result = <span class="k">await</span> cloudinary.uploader.<span class="f">upload</span>(filePathResolved, { folder });
+  <span class="k">return</span> result;
+};
+
+<span class="k">export const</span> <span class="f">deleteFromCloudinary</span> = <span class="k">async</span> (
+  public_Id: <span class="v">string</span>,
+  resource_type: <span class="v">string</span> = <span class="s">"image"</span>,
+) => {
+  <span class="k">const</span> result = <span class="k">await</span> cloudinary.uploader.<span class="f">destroy</span>(public_Id, { resource_type });
+  <span class="k">return</span> result;
+};</pre>
+
+  <h3>6c. shared/utils/upload.ts</h3>
+  <p>دمج <span class="file-ref">utils/multer.ts</span> + <span class="file-ref">helpers/removeLocalFiles.ts</span> في ملف واحد</p>
+
+  <pre><span class="c">// src/shared/utils/upload.ts</span>
+<span class="k">import</span> multer <span class="k">from</span> <span class="s">"multer"</span>;
+<span class="k">import</span> fs <span class="k">from</span> <span class="s">"fs"</span>;
+
+<span class="k">const</span> uploadDir = <span class="s">"./src/uploads"</span>;
+<span class="k">if</span> (!fs.<span class="f">existsSync</span>(uploadDir)) {
+  fs.<span class="f">mkdirSync</span>(uploadDir, { recursive: <span class="k">true</span> });
+}
+
+<span class="k">const</span> storage = multer.<span class="f">diskStorage</span>({
+  destination: (req, file, cb) => cb(<span class="k">null</span>, uploadDir),
+  filename: (req, file, cb) => cb(<span class="k">null</span>, <span class="v">Date</span>.<span class="f">now</span>() + <span class="s">"-"</span> + file.originalname),
+});
+
+<span class="k">const</span> fileFilter = (req: <span class="v">any</span>, file: <span class="v">any</span>, cb: <span class="v">any</span>) => {
+  <span class="k">if</span> (file.mimetype === <span class="s">"image/jpeg"</span> || file.mimetype === <span class="s">"image/png"</span>) {
+    cb(<span class="k">null</span>, <span class="k">true</span>);
+  } <span class="k">else</span> {
+    cb(<span class="k">null</span>, <span class="k">false</span>);
+  }
+};
+
+<span class="k">export const</span> <span class="v">upload</span> = multer({ storage, fileFilter });
+
+<span class="k">export const</span> <span class="f">removeFileFromDisk</span> = (filePath: <span class="v">string</span>) => {
+  <span class="k">try</span> {
+    <span class="k">const</span> resolvedPath = path.<span class="f">resolve</span>(filePath);
+    <span class="k">if</span> (fs.<span class="f">existsSync</span>(resolvedPath)) {
+      fs.<span class="f">unlinkSync</span>(resolvedPath);
+    }
+  } <span class="k">catch</span> (error) { console.<span class="f">log</span>(error); }
+};</pre>
+</div>
+
+<!-- ==================== STEP 7: AUTH MODULE ==================== -->
+<div class="section page-break">
+  <h2>7. modules/auth/ — قلب التحويل</h2>
+
+  <div class="note">
+    <strong>🎯 الأهم:</strong> هنا بنصلح المشكلة الكبيرة — الـ Service بقى بياخد <code>data</code> ويرجع <code>data</code>، مش بياخد <code>req, res</code> ويرجع middleware.
+  </div>
+
+  <h3>7a. token.service.ts</h3>
+  <pre><span class="c">// src/modules/auth/token.service.ts</span>
+<span class="k">import</span> jwt <span class="k">from</span> <span class="s">"jsonwebtoken"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+
+<span class="k">class</span> <span class="v">TokenService</span> {
+  <span class="f">generateAccessToken</span>(payload: <span class="v">object</span>): <span class="v">string</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!, {
+      expiresIn: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_EXPIRY</span>),
+    });
+  }
+
+  <span class="f">generateRefreshToken</span>(payload: <span class="v">object</span>): <span class="v">string</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!, {
+      expiresIn: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_EXPIRY</span>),
+    });
+  }
+
+  <span class="f">verifyAccessToken</span>(token: <span class="v">string</span>) {
+    <span class="k">return</span> jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!);
+  }
+
+  <span class="f">verifyRefreshToken</span>(token: <span class="v">string</span>) {
+    <span class="k">return</span> jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!);
+  }
+}
+
+<span class="k">export const</span> tokenService = <span class="k">new</span> <span class="v">TokenService</span>();</pre>
+
+  <div class="tip">
+    <strong>📌 جديد:</strong> أضفنا دوال <code>verifyAccessToken</code> و <code>verifyRefreshToken</code> — مش موجودين في الكود القديم (كان بيستخدم jwt.verify مباشرة)
+  </div>
+
+  <h3>7b. auth.model.ts — طبقة قاعدة البيانات</h3>
+  <pre><span class="c">// src/modules/auth/auth.model.ts</span>
+<span class="k">import</span> prisma <span class="k">from</span> <span class="s">"../../config/database"</span>;
+
+<span class="k">class</span> <span class="v">AuthModel</span> {
+  <span class="k">async</span> <span class="f">findById</span>(id: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">findUnique</span>({
+      where: { id },
+      select: {
+        id: <span class="k">true</span>, username: <span class="k">true</span>, email: <span class="k">true</span>,
+        phone: <span class="k">true</span>, password: <span class="k">true</span>, role: <span class="k">true</span>,
+        picture_url: <span class="k">true</span>, refreshToken: <span class="k">true</span>,
+        isBanned: <span class="k">true</span>, isOnline: <span class="k">true</span>,
+        failedLoginAttempts: <span class="k">true</span>, lockedUntil: <span class="k">true</span>,
+        otp: <span class="k">true</span>, otp_expiration: <span class="k">true</span>,
+        otp_purpose: <span class="k">true</span>, passwordChangedAt: <span class="k">true</span>,
+      },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">findByEmail</span>(email: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">findFirst</span>({ where: { email } });
+  }
+
+  <span class="k">async</span> <span class="f">findUserByIdentifier</span>(identifier: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">findFirst</span>({
+      where: { <span class="v">OR</span>: [{ email: identifier }, { phone: identifier }] },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">createUser</span>(data: {
+    username: <span class="v">string</span>; email: <span class="v">string</span>; password: <span class="v">string</span>;
+    picture_url?: <span class="v">string</span>; picture_url_id?: <span class="v">string</span>; isVerified?: <span class="v">boolean</span>;
+  }) { <span class="k">return</span> prisma.user.<span class="f">create</span>({ data }); }
+
+  <span class="k">async</span> <span class="f">updateRefreshToken</span>(userId: <span class="v">string</span>, refreshToken: <span class="v">string</span> | <span class="k">null</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({ where: { id: userId }, data: { refreshToken } });
+  }
+
+  <span class="k">async</span> <span class="f">updateAfterLogin</span>(userId: <span class="v">string</span>, refreshToken: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { failedLoginAttempts: <span class="n">0</span>, lockedUntil: <span class="k">null</span>, isOnline: <span class="k">true</span>, refreshToken },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">incrementFailedAttempts</span>(userId: <span class="v">string</span>) {
+    <span class="k">const</span> user = <span class="k">await</span> prisma.user.<span class="f">findUnique</span>({ where: { id: userId } });
+    <span class="k">if</span> (!user) <span class="k">return</span>;
+    <span class="k">const</span> failedAttempts = user.failedLoginAttempts + <span class="n">1</span>;
+    <span class="k">const</span> updateData: <span class="v">any</span> = { failedLoginAttempts };
+    <span class="k">if</span> (failedAttempts >= <span class="n">5</span>) {
+      updateData.lockedUntil = <span class="k">new</span> <span class="v">Date</span>(<span class="v">Date</span>.<span class="f">now</span>() + <span class="n">30</span> * <span class="n">60</span> * <span class="n">1000</span>);
+    }
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({ where: { id: userId }, data: updateData });
+  }
+
+  <span class="k">async</span> <span class="f">updateOtp</span>(userId: <span class="v">string</span>, otp: <span class="v">string</span>, expiration: <span class="v">Date</span>, purpose: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { otp, otp_expiration: expiration, otp_purpose: purpose <span class="k">as any</span> },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">clearOtp</span>(userId: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { otp: <span class="k">null</span>, otp_expiration: <span class="k">null</span>, otp_purpose: <span class="k">null</span> },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">updatePassword</span>(userId: <span class="v">string</span>, hashedPassword: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { password: hashedPassword, passwordChangedAt: <span class="k">new</span> <span class="v">Date</span>() },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">setOffline</span>(userId: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { refreshToken: <span class="k">null</span>, isOnline: <span class="k">false</span> },
+    });
+  }
+}
+
+<span class="k">export const</span> authModel = <span class="k">new</span> <span class="v">AuthModel</span>();</pre>
+
+  <div class="note">
+    <strong>📌 جديد:</strong> كل queries الـ Prisma اللي كانت مبعثرة في <code>User.class.ts</code> بقيت مركزة هنا. ١٢ دالة لكل حاجة محتاجها.
+  </div>
+
+  <h3>7c. auth.service.ts — الـ Business Logic (المُصلح)</h3>
+  <pre><span class="c">// src/modules/auth/auth.service.ts</span>
+<span class="k">import</span> bcrypt <span class="k">from</span> <span class="s">"bcryptjs"</span>;
+<span class="k">import</span> jwt, { <span class="v">JwtPayload</span> } <span class="k">from</span> <span class="s">"jsonwebtoken"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+<span class="k">import</span> { authModel } <span class="k">from</span> <span class="s">"./auth.model"</span>;
+<span class="k">import</span> { tokenService } <span class="k">from</span> <span class="s">"./token.service"</span>;
+<span class="k">import</span> { sendEmail } <span class="k">from</span> <span class="s">"../../shared/utils/email"</span>;
+<span class="k">import</span> { otpEmailTemplate } <span class="k">from</span> <span class="s">"../../shared/utils/emailTemplates"</span>;
+<span class="k">import</span> { uploadToCloudinary } <span class="k">from</span> <span class="s">"../../shared/utils/cloudinary"</span>;
+<span class="k">import</span> { removeFileFromDisk } <span class="k">from</span> <span class="s">"../../shared/utils/upload"</span>;
+<span class="k">import</span> <span class="v">Otp</span> <span class="k">from</span> <span class="s">"../../shared/utils/otp"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../../shared/errors/AppError"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">class</span> <span class="v">AuthService</span> {
+
+  <span class="k">async</span> <span class="f">register</span>(username: <span class="v">string</span>, email: <span class="v">string</span>, password: <span class="v">string</span>, filePath?: <span class="v">string</span>) {
+    <span class="k">const</span> existingUser = <span class="k">await</span> authModel.<span class="f">findByEmail</span>(email);
+    <span class="k">if</span> (existingUser) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">`User with email ${email} already exists`</span>, <span class="n">409</span>);
+    }
+
+    <span class="k">const</span> salt = <span class="k">await</span> bcrypt.<span class="f">genSalt</span>(<span class="n">10</span>);
+    <span class="k">const</span> hashedPassword = <span class="k">await</span> bcrypt.<span class="f">hash</span>(password, salt);
+
+    <span class="k">let</span> picture: { url: <span class="v">string</span>; id: <span class="v">string</span> } | <span class="k">undefined</span>;
+    <span class="k">if</span> (filePath) {
+      <span class="k">try</span> {
+        <span class="k">const</span> result = <span class="k">await</span> <span class="f">uploadToCloudinary</span>(filePath, <span class="s">"users"</span>);
+        picture = { url: result.secure_url, id: result.public_id };
+      } <span class="k">finally</span> { <span class="f">removeFileFromDisk</span>(filePath); }
+    }
+
+    <span class="k">const</span> otpUtil = <span class="k">new</span> <span class="v">Otp</span>(<span class="n">5</span>);
+    <span class="k">const</span> generatedOtp = otpUtil.<span class="f">generateOtp</span>();
+    <span class="k">const</span> otpSalt = <span class="k">await</span> bcrypt.<span class="f">genSalt</span>(<span class="n">10</span>);
+    <span class="k">const</span> hashedOtp = <span class="k">await</span> bcrypt.<span class="f">hash</span>(generatedOtp, otpSalt);
+
+    <span class="k">try</span> {
+      <span class="k">await</span> <span class="f">sendEmail</span>(email, <span class="s">"Sign up Verification"</span>,
+        <span class="f">otpEmailTemplate</span>({ name: username, otp: generatedOtp, expiresInMinutes: otpUtil.otp_expiration_minutes, appName: <span class="s">"Fashion Connect"</span>, supportEmail: <span class="s">"example@gmail.com"</span> }));
+    } <span class="k">catch</span> (error) {
+      <span class="k">if</span> (picture?.id) {
+        <span class="k">const</span> { deleteFromCloudinary } = <span class="k">await</span> <span class="f">import</span>(<span class="s">"../../shared/utils/cloudinary"</span>);
+        <span class="k">await</span> <span class="f">deleteFromCloudinary</span>(picture.id);
+      }
+      <span class="k">throw</span> error;
+    }
+
+    <span class="k">const</span> token = jwt.<span class="f">sign</span>(
+      { purpose: <span class="s">"signup-pending"</span>, username, email, password: hashedPassword, picture, otpHash: hashedOtp },
+      <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!,
+      { expiresIn: otpUtil.otp_expiration_minutes * <span class="n">60</span> * <span class="n">1000</span> });
+
+    <span class="k">return</span> { Token: token, expiration: otpUtil.otp_expiration_minutes };
+  }
+
+  <span class="k">async</span> <span class="f">verifyRegisterOtp</span>(token: <span class="v">string</span>, otp: <span class="v">string</span>) {
+    <span class="k">const</span> payload = jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!) <span class="k">as</span> <span class="v">JwtPayload</span>;
+    <span class="k">if</span> (payload?.purpose !== <span class="s">"signup-pending"</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid Registration Session"</span>, <span class="n">400</span>);
+
+    <span class="k">const</span> otpMatches = <span class="k">await</span> bcrypt.<span class="f">compare</span>(otp, payload.otpHash!);
+    <span class="k">if</span> (!otpMatches)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"OTP does not match"</span>, <span class="n">400</span>);
+
+    <span class="k">const</span> existingUser = <span class="k">await</span> authModel.<span class="f">findByEmail</span>(payload.email);
+    <span class="k">if</span> (existingUser) {
+      <span class="k">if</span> (payload.picture?.id) {
+        <span class="k">const</span> { deleteFromCloudinary } = <span class="k">await</span> <span class="f">import</span>(<span class="s">"../../shared/utils/cloudinary"</span>);
+        <span class="k">await</span> <span class="f">deleteFromCloudinary</span>(payload.picture.id);
+      }
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Email already exists"</span>, <span class="n">409</span>);
+    }
+
+    <span class="k">await</span> authModel.<span class="f">createUser</span>({
+      username: payload.username, email: payload.email,
+      password: payload.password, picture_url: payload.picture?.url,
+      picture_url_id: payload.picture?.id, isVerified: <span class="k">true</span> });
+  }
+
+  <span class="k">async</span> <span class="f">login</span>(identifier: <span class="v">string</span>, password: <span class="v">string</span>) {
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findUserByIdentifier</span>(identifier);
+    <span class="k">if</span> (!user) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid credentials"</span>, <span class="n">401</span>);
+
+    <span class="k">if</span> (user.lockedUntil && user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>())
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account is locked"</span>, <span class="n">403</span>);
+    <span class="k">if</span> (user.isBanned)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account is banned"</span>, <span class="n">403</span>);
+
+    <span class="k">const</span> isPasswordValid = <span class="k">await</span> bcrypt.<span class="f">compare</span>(password, user.password);
+    <span class="k">if</span> (!isPasswordValid) {
+      <span class="k">await</span> authModel.<span class="f">incrementFailedAttempts</span>(user.id);
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid credentials"</span>, <span class="n">401</span>);
+    }
+
+    <span class="k">const</span> accessToken = tokenService.<span class="f">generateAccessToken</span>({ id: user.id });
+    <span class="k">const</span> refreshToken = tokenService.<span class="f">generateRefreshToken</span>({ id: user.id });
+    <span class="k">await</span> authModel.<span class="f">updateAfterLogin</span>(user.id, refreshToken);
+
+    <span class="k">return</span> {
+      accessToken, refreshToken,
+      accessTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_EXPIRY</span>),
+      refreshTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_EXPIRY</span>),
+      user: { id: user.id, username: user.username, phone: user.phone, email: user.email, role: user.role, picture_url: user.picture_url },
+    };
+  }
+
+  <span class="k">async</span> <span class="f">logout</span>(refreshToken: <span class="v">string</span> | <span class="k">undefined</span>, accessToken: <span class="v">string</span> | <span class="k">undefined</span>) {
+    <span class="k">const</span> token = accessToken || refreshToken;
+    <span class="k">if</span> (!token) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"No token"</span>, <span class="n">401</span>);
+    <span class="k">try</span> {
+      <span class="k">const</span> payload = jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!) <span class="k">as</span> <span class="v">JwtPayload</span>;
+      <span class="k">await</span> authModel.<span class="f">setOffline</span>(payload.id);
+    } <span class="k">catch</span> { <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid token"</span>, <span class="n">401</span>); }
+  }
+
+  <span class="k">async</span> <span class="f">sendOtp</span>(email: <span class="v">string</span>, purpose: <span class="v">string</span>) {
+    <span class="k">if</span> (purpose !== <span class="s">"resetpassword"</span> && purpose !== <span class="s">"signup"</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid purpose"</span>, <span class="n">400</span>);
+
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findByEmail</span>(email);
+    <span class="k">if</span> (!user) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not found"</span>, <span class="n">404</span>);
+
+    <span class="k">const</span> otpUtil = <span class="k">new</span> <span class="v">Otp</span>(<span class="n">5</span>);
+    <span class="k">const</span> generatedOtp = otpUtil.<span class="f">generateOtp</span>();
+    <span class="k">await</span> <span class="f">sendEmail</span>(email, <span class="s">"OTP Verification"</span>,
+      <span class="f">otpEmailTemplate</span>({ name: user.username, otp: generatedOtp, expiresInMinutes: otpUtil.otp_expiration_minutes, appName: <span class="s">"Fashion Connect"</span>, supportEmail: <span class="s">"example@gmail.com"</span> }));
+
+    <span class="k">const</span> token = jwt.<span class="f">sign</span>(
+      { id: user.id, purpose: <span class="s">"reset-password"</span> }, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!,
+      { expiresIn: otpUtil.otp_expiration_minutes * <span class="n">60</span> * <span class="n">1000</span> });
+    <span class="k">await</span> authModel.<span class="f">updateOtp</span>(user.id, generatedOtp, otpUtil.otp_expiration_date, purpose);
+    <span class="k">return</span> { Token: token, expiration: otpUtil.otp_expiration_minutes };
+  }
+
+  <span class="k">async</span> <span class="f">verifyOtp</span>(token: <span class="v">string</span>, otp: <span class="v">string</span>) {
+    <span class="k">const</span> payload = jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!) <span class="k">as</span> <span class="v">JwtPayload</span>;
+    <span class="k">if</span> (payload?.purpose !== <span class="s">"reset-password"</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid session"</span>, <span class="n">400</span>);
+
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findById</span>(payload.id);
+    <span class="k">if</span> (!user) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not found"</span>, <span class="n">404</span>);
+
+    <span class="k">if</span> (<span class="k">new</span> <span class="v">Date</span>() > user.otp_expiration!)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"OTP expired"</span>, <span class="n">400</span>);
+    <span class="k">if</span> (user.otp !== otp)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid OTP"</span>, <span class="n">400</span>);
+
+    <span class="k">await</span> authModel.<span class="f">clearOtp</span>(user.id);
+    <span class="k">const</span> verifyToken = jwt.<span class="f">sign</span>(
+      { id: user.id, purpose: <span class="s">"verify-otp"</span> }, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!,
+      { expiresIn: <span class="n">5</span> * <span class="n">60</span> });
+    <span class="k">return</span> { Token: verifyToken, expiration: <span class="n">5</span> };
+  }
+
+  <span class="k">async</span> <span class="f">resetPassword</span>(token: <span class="v">string</span>, newPassword: <span class="v">string</span>) {
+    <span class="k">const</span> payload = jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!) <span class="k">as</span> <span class="v">JwtPayload</span>;
+    <span class="k">if</span> (payload?.purpose !== <span class="s">"verify-otp"</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid session"</span>, <span class="n">400</span>);
+
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findById</span>(payload.id);
+    <span class="k">if</span> (!user) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not found"</span>, <span class="n">404</span>);
+
+    <span class="k">const</span> salt = <span class="k">await</span> bcrypt.<span class="f">genSalt</span>(<span class="n">10</span>);
+    <span class="k">const</span> hashedPassword = <span class="k">await</span> bcrypt.<span class="f">hash</span>(newPassword, salt);
+    <span class="k">await</span> authModel.<span class="f">updatePassword</span>(user.id, hashedPassword);
+  }
+
+  <span class="k">async</span> <span class="f">refreshAccessToken</span>(incomingRefreshToken: <span class="v">string</span>) {
+    <span class="k">const</span> payload = tokenService.<span class="f">verifyRefreshToken</span>(incomingRefreshToken) <span class="k">as</span> <span class="v">JwtPayload</span>;
+
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findById</span>(payload.id);
+    <span class="k">if</span> (!user) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not found"</span>, <span class="n">404</span>);
+
+    <span class="k">if</span> (user.refreshToken !== incomingRefreshToken)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Refresh token revoked"</span>, <span class="n">401</span>);
+    <span class="k">if</span> (user.isBanned)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account banned"</span>, <span class="n">403</span>);
+    <span class="k">if</span> (user.lockedUntil && user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>())
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account locked"</span>, <span class="n">403</span>);
+
+    <span class="k">const</span> newAccessToken = tokenService.<span class="f">generateAccessToken</span>({ id: user.id });
+    <span class="k">const</span> newRefreshToken = tokenService.<span class="f">generateRefreshToken</span>({ id: user.id });
+    <span class="k">await</span> authModel.<span class="f">updateRefreshToken</span>(user.id, newRefreshToken);
+
+    <span class="k">return</span> {
+      accessToken: newAccessToken, refreshToken: newRefreshToken,
+      accessTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_EXPIRY</span>),
+      refreshTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_EXPIRY</span>),
+    };
+  }
+}
+
+<span class="k">export const</span> authService = <span class="k">new</span> <span class="v">AuthService</span>();</pre>
+
+  <div class="note">
+    <p>ملاحظة مهمة: فوق هو الكود الكامل. لاحظ إن كل دالة بتاخد <strong>data</strong> (string, number) وترجع <strong>data</strong> (object) — مفيش req, res, next جوا الـ Service.</p>
+    <table>
+      <tr><th>الدالة</th><th>قبل</th><th>بعد</th></tr>
+      <tr>
+        <td><code>refreshAccessToken</code></td>
+        <td><code>()</code> → ترجع middleware</td>
+        <td><code>(incomingRefreshToken: string)</code> → ترجع <code>{ accessToken, refreshToken }</code></td>
+      </tr>
+      <tr>
+        <td><code>logout</code></td>
+        <td>ترجع middleware + بتعمل <code>res.clearCookie()</code></td>
+        <td>تاخد <code>(refreshToken, accessToken)</code> وترجع void</td>
+      </tr>
+      <tr>
+        <td><code>verifyRegisterOtp</code></td>
+        <td>ترجع middleware + بتعمل <code>res.clearCookie()</code></td>
+        <td>تاخد <code>(token, otp)</code> وترجع void</td>
+      </tr>
+      <tr>
+        <td><code>verifyOtp</code></td>
+        <td>ترجع middleware + بتعمل <code>res.clearCookie()</code></td>
+        <td>تاخد <code>(token, otp)</code> وترجع <code>{ Token, expiration }</code></td>
+      </tr>
+      <tr>
+        <td><code>resetPassword</code></td>
+        <td>ترجع middleware</td>
+        <td>تاخد <code>(token, newPassword)</code> وترجع void</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== STEP 8 ==================== -->
+<div class="section page-break">
+  <h2>8. auth.controller.ts — الـ Controller الجديد</h2>
+  <p>هنا الـ Controller بقى هو اللي يقرا الـ cookies ويضبط الـ cookies — مش الـ Service</p>
+
+  <pre><span class="c">// src/modules/auth/auth.controller.ts</span>
+<span class="k">import</span> { <span class="v">Request</span>, <span class="v">Response</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { authService } <span class="k">from</span> <span class="s">"./auth.service"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+<span class="k">import</span> { asyncHandler } <span class="k">from</span> <span class="s">"../../shared/utils/asyncHandler"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../../shared/errors/AppError"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+
+<span class="k">const</span> isProduction = <span class="v">ENV</span>.<span class="v">NODE_ENV</span> === <span class="s">"production"</span>;
+<span class="k">const</span> baseCookieOptions = {
+  httpOnly: <span class="k">true</span>,
+  secure: isProduction,
+  sameSite: isProduction ? <span class="s">"none"</span> : <span class="s">"lax"</span> <span class="k">as</span> <span class="s">"none"</span> | <span class="s">"lax"</span>,
+  path: <span class="s">"/"</span>,
+};
+
+<span class="k">export const</span> <span class="f">login</span> = <span class="f">asyncHandler</span>(<span class="k">async</span> (req, res) => {
+  <span class="k">const</span> { identifier, password } = req.body;
+
+  <span class="c">// ← الـ Controller ينادي Service — Service يرجع data</span>
+  <span class="k">const</span> result = <span class="k">await</span> authService.<span class="f">login</span>(identifier, password);
+
+  <span class="c">// ← الـ Controller هو اللي يضبط cookies</span>
+  res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.accessToken, { ...baseCookieOptions, maxAge: result.accessTokenExpiration });
+  res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.refreshToken, { ...baseCookieOptions, maxAge: result.refreshTokenExpiration });
+
+  <span class="k">return</span> res.<span class="f">status</span>(<span class="n">200</span>).<span class="f">json</span>({ success: <span class="k">true</span>, message: <span class="s">"Login successful"</span>, data: result });
+});
+
+<span class="k">export const</span> <span class="f">refreshAccessToken</span> = <span class="f">asyncHandler</span>(<span class="k">async</span> (req, res) => {
+  <span class="c">// ← الـ Controller يقرا الـ cookies بنفسه</span>
+  <span class="k">const</span> incomingRefreshToken = req.cookies?.refreshToken;
+  <span class="k">if</span> (!incomingRefreshToken) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Refresh token is missing"</span>, <span class="n">401</span>);
+  }
+
+  <span class="c">// ← ينادي Service — Service بياخد string ويرجع object</span>
+  <span class="k">const</span> result = <span class="k">await</span> authService.<span class="f">refreshAccessToken</span>(incomingRefreshToken);
+
+  <span class="c">// ← الـ Controller يضبط cookies</span>
+  res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.accessToken, { ...baseCookieOptions, maxAge: result.accessTokenExpiration * <span class="n">1000</span> * <span class="n">60</span> });
+  res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.refreshToken, { ...baseCookieOptions, maxAge: result.refreshTokenExpiration * <span class="n">1000</span> * <span class="n">60</span> });
+
+  <span class="k">return</span> res.<span class="f">status</span>(<span class="n">200</span>).<span class="f">json</span>({ success: <span class="k">true</span>, message: <span class="s">"Token refreshed"</span>, data: result });
+});
+
+<span class="c">/* وباقي الدوال بنفس النمط */</span></pre>
+
+  <div class="warn">
+    <strong>⚠️ الفرق الجوهري:</strong> قبل كان الـ Controller يعمل <code>user.refreshAccessToken()</code> وترجع middleware، والـ Controller ينادي middleware بـ <code>(req, res, next)</code>. دلوقتي الـ Controller يقرا <code>req.cookies.refreshToken</code> بنفسه، ويبعت الـ token لـ <code>authService.refreshAccessToken(token)</code>، والـ Service يرجع data عادي.
+  </div>
+</div>
+
+<!-- ==================== STEP 9 ==================== -->
+<div class="section page-break">
+  <h2>9. auth.routes.ts — أهم تغيير: إزالة isAuthenticated من refresh</h2>
+
+  <pre><span class="c">// src/modules/auth/auth.routes.ts</span>
+<span class="k">import</span> { Router } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { validate } <span class="k">from</span> <span class="s">"../../shared/middleware/validate"</span>;
+<span class="k">import</span> { authenticate } <span class="k">from</span> <span class="s">"../../shared/middleware/authenticate"</span>;
+<span class="k">import</span> { upload } <span class="k">from</span> <span class="s">"../../shared/utils/upload"</span>;
+<span class="k">import</span> { /* all controllers */ } <span class="k">from</span> <span class="s">"./auth.controller"</span>;
+
+<span class="k">const</span> router = <span class="v">Router</span>();
+
+router.<span class="f">post</span>(<span class="s">"/login"</span>, <span class="f">validate</span>(loginSchema), login);
+router.<span class="f">post</span>(<span class="s">"/register"</span>, <span class="f">validate</span>(registerSchema), upload.<span class="f">single</span>(<span class="s">"picture"</span>), register);
+router.<span class="f">post</span>(<span class="s">"/register-verify-otp"</span>, <span class="f">validate</span>(otpSchema), verifyRegisterOtp);
+router.<span class="f">post</span>(<span class="s">"/forget-password"</span>, <span class="f">validate</span>(forgetPasswordSchema), forgetPassword);
+router.<span class="f">post</span>(<span class="s">"/verify-otp"</span>, <span class="f">validate</span>(otpSchema), verifyOtp);
+router.<span class="f">patch</span>(<span class="s">"/reset-password"</span>, <span class="f">validate</span>(resetPasswordSchema), resetPassword);
+router.<span class="f">post</span>(<span class="s">"/logout"</span>, authenticate, logout);
+
+<span class="c">// ← مش محتاج isAuthenticated — الـ refresh token نفسه بيثبت هويتك</span>
+router.<span class="f">post</span>(<span class="s">"/refresh-accessToken"</span>, refreshAccessToken);
+
+<span class="k">export default</span> router;</pre>
+
+  <div class="warn">
+    <strong>⚠️ التغيير المهم:</strong> في الـ routes القديم، <code>/refresh-accessToken</code> كان عليه <code>isAuthenticated</code> middleware — معناها إنك محتاج access token سليم عشان تجدد الـ access token. مشكلة: لو الـ access token خلص، مش هتعرف تجدد. الحل: route مفتوح (بدون authenticate) والـ Service بيعتمد على الـ refresh token نفسه.
+  </div>
+</div>
+
+<!-- ==================== STEP 10 ==================== -->
+<div class="section page-break">
+  <h2>10. Brand Module</h2>
+  <p>نفس النمط للـ Brand module — Model, Service, Controller, Routes, Validators</p>
+
+  <h3>10a. brand.model.ts</h3>
+  <pre><span class="c">// src/modules/brand/brand.model.ts</span>
+<span class="k">import</span> prisma <span class="k">from</span> <span class="s">"../../config/database"</span>;
+
+<span class="k">class</span> <span class="v">BrandModel</span> {
+  <span class="k">async</span> <span class="f">findBrandWithDocuments</span>(brandId: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.brand.<span class="f">findUnique</span>({
+      where: { id: brandId <span class="k">as any</span> },
+      include: { documents: <span class="k">true</span> },
+    });
+  }
+}
+
+<span class="k">export const</span> brandModel = <span class="k">new</span> <span class="v">BrandModel</span>();</pre>
+
+  <h3>10b. brand.service.ts</h3>
+  <pre><span class="c">// src/modules/brand/brand.service.ts</span>
+<span class="k">import</span> { <span class="v">BrandDocType</span> } <span class="k">from</span> <span class="s">"../../generated/prisma/browser"</span>;
+<span class="k">import</span> { brandModel } <span class="k">from</span> <span class="s">"./brand.model"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../../shared/errors/AppError"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">class</span> <span class="v">BrandService</span> {
+  <span class="k">async</span> <span class="f">getBrandVerificationStatus</span>(brandId: <span class="v">string</span>, userId: <span class="v">string</span>, role: <span class="v">string</span>) {
+    <span class="k">const</span> brand = <span class="k">await</span> brandModel.<span class="f">findBrandWithDocuments</span>(brandId);
+    <span class="k">if</span> (!brand) <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Brand not found"</span>, <span class="n">404</span>);
+
+    <span class="k">if</span> (brand.userId !== userId && role !== <span class="s">"admin"</span>) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Unauthorized"</span>, <span class="n">403</span>);
+    }
+
+    <span class="k">const</span> allTypes = <span class="v">Object</span>.<span class="f">values</span>(<span class="v">BrandDocType</span>);
+    <span class="k">const</span> submitted = <span class="k">new</span> <span class="v">Set</span>(brand.documents.<span class="f">map</span>(d => d.docType));
+    <span class="k">const</span> missing = allTypes.<span class="f">filter</span>(t => !submitted.<span class="f">has</span>(t));
+
+    <span class="k">return</span> {
+      verificationStatus: brand.verificationStatus,
+      submittedDocuments: brand.documents.<span class="f">map</span>(d => ({
+        docType: d.docType, fileUrl: d.fileUrl,
+        status: d.status, rejectionReason: (d <span class="k">as any</span>).rejectionReason ?? <span class="k">null</span>,
+      })),
+      missingDocuments: missing,
+    };
+  }
+}
+
+<span class="k">export const</span> brandService = <span class="k">new</span> <span class="v">BrandService</span>();</pre>
+
+  <h3>10c. brand.controller.ts</h3>
+  <pre><span class="c">// src/modules/brand/brand.controller.ts</span>
+<span class="k">import</span> { <span class="v">Request</span>, <span class="v">Response</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { brandService } <span class="k">from</span> <span class="s">"./brand.service"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+<span class="k">import</span> { asyncHandler } <span class="k">from</span> <span class="s">"../../shared/utils/asyncHandler"</span>;
+<span class="k">import</span> <span class="v">AppError</span> <span class="k">from</span> <span class="s">"../../shared/errors/AppError"</span>;
+
+<span class="k">export const</span> <span class="f">brandVerificationStatus</span> = <span class="f">asyncHandler</span>(<span class="k">async</span> (req, res) => {
+  <span class="k">const</span> { brandId } = req.params <span class="k">as</span> { brandId: <span class="v">string</span> };
+  <span class="k">const</span> user = (req <span class="k">as any</span>).user;
+
+  <span class="k">if</span> (!user?.id) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Not authenticated"</span>, <span class="n">401</span>);
+  }
+
+  <span class="k">const</span> result = <span class="k">await</span> brandService.<span class="f">getBrandVerificationStatus</span>(brandId, user.id, user.role);
+
+  <span class="k">return</span> res.<span class="f">status</span>(<span class="n">200</span>).<span class="f">json</span>({ success: <span class="k">true</span>, message: <span class="s">"OK"</span>, data: result });
+});</pre>
+
+  <h3>10d. brand.routes.ts</h3>
+  <pre><span class="c">// src/modules/brand/brand.routes.ts</span>
+<span class="k">import</span> { Router } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { validate } <span class="k">from</span> <span class="s">"../../shared/middleware/validate"</span>;
+<span class="k">import</span> { authenticate } <span class="k">from</span> <span class="s">"../../shared/middleware/authenticate"</span>;
+<span class="k">import</span> { brandVerificationStatus } <span class="k">from</span> <span class="s">"./brand.controller"</span>;
+<span class="k">import</span> { brandVerificationStatusSchema } <span class="k">from</span> <span class="s">"./brand.validators"</span>;
+
+<span class="k">const</span> router = <span class="v">Router</span>();
+
+router.<span class="f">get</span>(<span class="s">"/:brandId/verification-status"</span>,
+  authenticate,
+  <span class="f">validate</span>(brandVerificationStatusSchema),
+  brandVerificationStatus,
+);
+
+<span class="k">export default</span> router;</pre>
+
+  <h3>10e. brand.validators.ts</h3>
+  <pre><span class="c">// src/modules/brand/brand.validators.ts</span>
+<span class="k">import</span> { z } <span class="k">from</span> <span class="s">"zod"</span>;
+
+<span class="k">export const</span> brandVerificationStatusSchema = z.<span class="f">object</span>({
+  brandId: z.<span class="f">string</span>().<span class="f">uuid</span>({ message: <span class="s">"Invalid brand ID format"</span> }),
+});</pre>
+</div>
+
+<!-- ==================== STEP 11 ==================== -->
+<div class="section page-break">
+  <h2>11. server.ts — السيرفر الجديد</h2>
+
+  <pre><span class="c">// src/server.ts</span>
+<span class="k">import</span> express <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> cookieParser <span class="k">from</span> <span class="s">"cookie-parser"</span>;
+<span class="k">import</span> cors <span class="k">from</span> <span class="s">"cors"</span>;
+<span class="k">import</span> helmet <span class="k">from</span> <span class="s">"helmet"</span>;
+<span class="k">import</span> morgan <span class="k">from</span> <span class="s">"morgan"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"./config/env"</span>;
+<span class="k">import</span> { connectDB } <span class="k">from</span> <span class="s">"./config/database"</span>;
+<span class="k">import</span> authRouter <span class="k">from</span> <span class="s">"./modules/auth/auth.routes"</span>;
+<span class="k">import</span> brandRouter <span class="k">from</span> <span class="s">"./modules/brand/brand.routes"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+
+<span class="k">const</span> app = <span class="f">express</span>();
+<span class="f">connectDB</span>();
+
+<span class="c">// Middleware — كلها كانت مفقودة قبل كده</span>
+app.<span class="f">use</span>(<span class="f">helmet</span>());                    <span class="c">// أمان HTTP headers</span>
+app.<span class="f">use</span>(<span class="f">cors</span>({ origin: <span class="k">true</span>, credentials: <span class="k">true</span> }));  <span class="c">// CORS للـ frontend</span>
+app.<span class="f">use</span>(<span class="f">morgan</span>(<span class="s">"dev"</span>));                <span class="c">// تسجيل الطلبات</span>
+app.<span class="f">use</span>(express.<span class="f">json</span>());
+app.<span class="f">use</span>(<span class="f">cookieParser</span>());               <span class="c">// ← جديد: عشان req.cookies يشتغل</span>
+
+<span class="c">// Routes — من الموديولات الجديدة</span>
+app.<span class="f">use</span>(<span class="s">"/api/v1/auth"</span>, authRouter);
+app.<span class="f">use</span>(<span class="s">"/api/v1/brands"</span>, brandRouter);
+
+<span class="c">// Error handler</span>
+app.<span class="f">use</span>((err: <span class="v">any</span>, req: <span class="v">any</span>, res: <span class="v">any</span>, next: <span class="v">any</span>) => {
+  <span class="k">const</span> statusCode = err.statusCode || <span class="n">500</span>;
+  res.<span class="f">status</span>(statusCode).<span class="f">json</span>({ success: <span class="k">false</span>, message: err.message || <span class="s">"Internal Server Error"</span> });
+});
+
+<span class="c">// 404</span>
+app.<span class="f">use</span>((req, res) => {
+  res.<span class="f">status</span>(<span class="n">404</span>).<span class="f">json</span>({ success: <span class="k">false</span>, message: <span class="s">"Route not found"</span> });
+});
+
+app.<span class="f">listen</span>(<span class="v">ENV</span>.<span class="v">PORT</span>, () => {
+  console.<span class="f">log</span>(<span class="s">`Server is running on port ${ENV.PORT}`</span>);
+});</pre>
+
+  <div class="tip">
+    <strong>✅ إيه اللي اتحسن؟</strong><br>
+    1. <code>helmet()</code> — أمان (كان مفقود)<br>
+    2. <code>cors()</code> — للـ frontend (كان مفقود)<br>
+    3. <code>morgan("dev")</code> — تسجيل الطلبات (كان مفقود)<br>
+    4. <code>cookieParser()</code> — عشان <code>req.cookies</code> (كان مفقود — ده كان bug!)<br>
+    5. Routes من <code>modules/auth</code> و <code>modules/brand</code> بدل <code>routers/</code>
+  </div>
+</div>
+
+<!-- ==================== STEP 12 ==================== -->
+<div class="section page-break">
+  <h2>12. إصلاح Prisma Schema</h2>
+
+  <p>في <span class="file-ref">prisma/schema.prisma</span>، الـ User model عنده مشكلة:</p>
+
+  <pre><span class="c">// قبل — wishlistUserId مطلوب (String بدون ?)</span>
+wishlistUserId      String          @db.Uuid
+
+<span class="c">// بعد — wishlistUserId اختياري</span>
+wishlistUserId      String?         @db.Uuid</pre>
+
+  <p>ليه؟ لأن <code>wishlist</code> model عنده <code>userId</code> اللي بترجع لـ User. الـ <code>wishlistUserId</code> على User نفسه مش ضروري ومش موجود في كل user. لازم يبقى <code>String?</code> عشان الـ Prisma Client يقبل إنشاء User من غير wishlist.</p>
+</div>
+
+<!-- ==================== STEP 13 ==================== -->
+<div class="section page-break">
+  <h2>13. توليد Prisma Client + Compile</h2>
+
+  <ol>
+    <li>
+      <strong>توليد Prisma Client:</strong>
+      <pre>npx prisma generate</pre>
+    </li>
+    <li>
+      <strong>اختبار Compilation:</strong>
+      <pre>npx tsc --noEmit</pre>
+      <p>لو مفيش errors — خلاص نجح. لو فيه errors — راجع الخطوات.</p>
+    </li>
+  </ol>
+</div>
+
+<!-- ==================== STEP 14 ==================== -->
+<div class="section page-break">
+  <h2>14. حذف الملفات القديمة</h2>
+
+  <div class="warn">
+    <strong>⚠️ بعد ما تتأكد إن الـ Compilation نجح والسيرفر شغال، احذف الفولدرات القديمة.</strong>
+  </div>
+
+  <pre><span class="c"># احذف الفولدرات القديمة (بعد التأكد من الجديد)</span>
+rm -rf src/classes
+rm -rf src/controllers
+rm -rf src/routers
+rm -rf src/validators
+rm -rf src/middlewares
+rm -rf src/helpers
+rm -rf src/utils</pre>
+
+  <div class="tip">
+    <strong>💡 محتاج تحتفظ بـ seed.ts؟</strong><br>
+    الـ seed.ts موجود في <span class="file-ref">src/helpers/seed.ts</span>. لو عاوز تحتفظ بيه، انسخه للـ <span class="file-ref">prisma/</span> قبل ما تحذف <span class="file-ref">src/helpers/</span>. أو استخدم النسخة المعدلة منه.
+  </div>
+
+  <p>ثانيًا، حدث <span class="file-ref">package.json</span> عشان الـ seed يشاور على المكان الجديد:</p>
+
+  <pre><span class="c">// في package.json</span>
+"prisma": {
+  "seed": "ts-node src/helpers/seed.ts"
+}</pre>
+
+  <p>لو حذفت <span class="file-ref">src/helpers/</span>، غير المسار لـ seed:</p>
+
+  <pre>"prisma": {
+  "seed": "ts-node prisma/seed.ts"
+}</pre>
+</div>
+
+<!-- ==================== STEP 15 ==================== -->
+<div class="section page-break">
+  <h2>15. اختبار السيرفر</h2>
+
+  <pre>npm run dev</pre>
+
+  <p>اختبر الـ endpoints بالـ Postman أو curl:</p>
+
+  <pre><span class="c"># تسجيل الدخول</span>
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identifier": "john@example.com", "password": "User@123"}'
+
+<span class="c"># تجديد التوكن</span>
+curl -X POST http://localhost:3000/api/v1/auth/refresh-accessToken \
+  -H "Cookie: refreshToken=..."</pre>
+</div>
+
+<!-- ==================== FINAL ==================== -->
+<div class="section page-break">
+  <h2>✅ الخلاصة — ملخص التغييرات</h2>
+
+  <table>
+    <tr><th>#</th><th>التغيير</th><th>السبب</th></tr>
+    <tr><td>1</td><td><code>cookie-parser</code> middleware</td><td>إصلاح bug — req.cookies كان undefined</td></tr>
+    <tr><td>2</td><td><code>prisma/schema.prisma</code>: <code>wishlistUserId String?</code></td><td>إصلاح TypeScript error — الحقل بقى optional</td></tr>
+    <tr><td>3</td><td><code>config/env.ts</code></td><td>نقل ملف ENV من helpers/ لـ config/</td></tr>
+    <tr><td>4</td><td><code>config/database.ts</code></td><td>نقل connectDB من utils/ لـ config/</td></tr>
+    <tr><td>5</td><td><code>shared/middleware/authenticate.ts</code></td><td>نقل + تغيير اسم من isAuthenticated</td></tr>
+    <tr><td>6</td><td><code>shared/middleware/authorize.ts</code></td><td>نقل + تغيير اسم من isAuthorized</td></tr>
+    <tr><td>7</td><td><code>shared/middleware/validate.ts</code></td><td>نقل + تغيير اسم من validationMiddleware</td></tr>
+    <tr><td>8</td><td><code>modules/auth/auth.service.ts</code></td><td><strong>إصلاح جوهري:</strong> الدوال بقت تاخد <code>data</code> وترجع <code>data</code> بدل middleware</td></tr>
+    <tr><td>9</td><td><code>modules/auth/auth.model.ts</code></td><td><strong>جديد:</strong> فصل كل queries الـ Prisma في layer منفصل</td></tr>
+    <tr><td>10</td><td><code>modules/auth/auth.controller.ts</code></td><td><strong>إصلاح:</strong> بقى الـ Controller هو اللي يقرا cookies ويضبط cookies</td></tr>
+    <tr><td>11</td><td><code>modules/auth/auth.routes.ts</code></td><td><strong>إصلاح:</strong> إزالة isAuthenticated من /refresh-accessToken</td></tr>
+    <tr><td>12</td><td><code>modules/auth/token.service.ts</code></td><td><strong>جديد:</strong> دوال توليد وتحقق JWT في مكان واحد</td></tr>
+    <tr><td>13</td><td><code>modules/brand/*</code></td><td>نفس النمط: Model + Service + Controller + Routes + Validators</td></tr>
+    <tr><td>14</td><td><code>server.ts</code></td><td>إضافة helmet, cors, morgan, cookieParser — كلها كانت مفقودة</td></tr>
+  </table>
+
+  <div class="note" style="text-align:center;padding:20px;">
+    <h3 style="color:#28a745;">🎯 جاهز تبدأ التحويل على الـ branch refactor/architecture</h3>
+    <p style="margin-top:8px;">ابدأ من أول خطوة (إنشاء الفولدرات) وامشي بالترتيب. كل ملف مكتوب فوق كاملًا — انسخ والصق.</p>
+    <p style="color:#666;margin-top:8px;">بعد ما تخلص كله: <code>git add . && git commit -m "refactor: migrate to modular monolith architecture"</code></p>
+  </div>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

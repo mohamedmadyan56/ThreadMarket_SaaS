@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refresh Token - الطريقة الاحترافية المستخدمة في الشركات</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    line-height: 1.9;
+    direction: rtl;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: white;
+    padding: 50px 0 30px;
+    text-align: center;
+    border-bottom: 3px solid #e94560;
+  }
+  .header h1 { font-size: 2.5em; font-weight: 800; background: linear-gradient(90deg, #e94560, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .sub { opacity: 0.8; font-size: 1.1em; }
+  .header .note { color: #ff9f43; font-size: 0.9em; margin-top: 10px; }
+
+  .section {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 25px 0;
+    border: 1px solid #2a2a4a;
+  }
+  .section h2 { color: #e94560; font-size: 1.6em; font-weight: 700; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #2a2a4a; }
+  .section h3 { color: #ff9f43; font-size: 1.2em; margin: 25px 0 12px; }
+  .section h4 { color: #54a0ff; font-size: 1.05em; margin: 18px 0 8px; }
+  .section p { margin: 10px 0; color: #c0c0d0; }
+  .section ul, .section ol { padding-right: 22px; margin: 10px 0; }
+  .section ul li, .section ol li { margin: 6px 0; color: #c0c0d0; }
+
+  pre {
+    background: #0d0d1a;
+    color: #e0e0e0;
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.82em;
+    direction: ltr;
+    text-align: left;
+    margin: 15px 0;
+    border: 1px solid #2a2a4a;
+    position: relative;
+  }
+  pre .c { color: #6a9955; font-style: italic; }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  pre .v { color: #9cdcfe; }
+  pre .n { color: #b5cea8; }
+  pre .o { color: #d4d4d4; }
+  pre .i { color: #c586c0; }
+  pre .hl { background: #2a1a1a; display: block; margin: 0 -20px; padding: 0 20px; border-right: 3px solid #e94560; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+  .card {
+    background: #0d0d1a;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #2a2a4a;
+    border-top: 3px solid #e94560;
+  }
+  .card h4 { color: #ff9f43; margin-bottom: 8px; }
+  .card p { font-size: 0.9em; color: #c0c0d0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 0.9em; }
+  th { background: #0d0d1a; color: #e94560; padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #e94560; }
+  td { padding: 10px 12px; border-bottom: 1px solid #2a2a4a; color: #c0c0d0; }
+  tr:hover td { background: #1a1a2e; }
+
+  .flow { display: flex; flex-direction: column; align-items: center; margin: 25px 0; direction: ltr; }
+  .flow-step { background: #16213e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 12px 24px; margin: 3px; text-align: center; min-width: 200px; }
+  .flow-step.hl { border-color: #e94560; background: #2a1a2e; }
+  .flow-step.green { border-color: #28a745; background: #1a2a1e; }
+  .flow-step.blue { border-color: #54a0ff; background: #1a1a3e; }
+  .flow-arrow { color: #e94560; font-size: 1.2em; margin: 2px 0; }
+
+  .note { background: #1a2a2a; border-right: 4px solid #17a2b8; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .warn { background: #2a1a1a; border-right: 4px solid #e94560; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+  .tip { background: #1a2a1a; border-right: 4px solid #28a745; padding: 15px 20px; border-radius: 8px; margin: 15px 0; }
+
+  .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 15px 0; }
+  @media (max-width: 768px) { .code-compare { grid-template-columns: 1fr; } }
+  .code-box { background: #0d0d1a; border-radius: 8px; padding: 15px; border: 1px solid #2a2a4a; overflow-x: auto; }
+  .code-box .title { font-weight: 600; margin-bottom: 10px; font-size: 0.9em; }
+  .code-box code { font-family: 'Consolas', monospace; font-size: 0.78em; white-space: pre; }
+
+  .file-ref { display: inline-block; background: #2a2a4a; color: #54a0ff; padding: 3px 12px; border-radius: 4px; font-family: monospace; font-size: 0.85em; direction: ltr; }
+
+  .page-break { page-break-before: always; }
+  @media print { body { background: white; color: #333; } .section { background: white; border-color: #ddd; } pre { background: #f5f5f5; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Refresh Token بالطريقة الاحترافية</h1>
+  <div class="sub">زي ما الشركات بتعمله — Layered Architecture + Best Practices</div>
+  <div class="note">مع مقارنة بالطريقة الحالية في المشروع</div>
+</div>
+
+<div class="container">
+
+<!-- INDEX -->
+<div class="section">
+  <h2>📋 الفهرس</h2>
+  <ol>
+    <li><a href="#intro" style="color:#54a0ff;">نظرة عامة — الفرق بين الطريقتين</a></li>
+    <li><a href="#file-structure" style="color:#54a0ff;">هيكل الملفات (الطريقة الاحترافية)</a></li>
+    <li><a href="#auth-routes" style="color:#54a0ff;">1. auth.routes.ts — تعريف الـ Route</a></li>
+    <li><a href="#auth-controller" style="color:#54a0ff;">2. auth.controller.ts — استقبال الطلب</a></li>
+    <li><a href="#auth-service" style="color:#54a0ff;">3. auth.service.ts — Business Logic</a></li>
+    <li><a href="#auth-model" style="color:#54a0ff;">4. auth.model.ts — قاعدة البيانات</a></li>
+    <li><a href="#token-service" style="color:#54a0ff;">5. token.service.ts — توليد التوكنات</a></li>
+    <li><a href="#authenticate-middleware" style="color:#54a0ff;">6. authenticate.middleware.ts — حماية الـ Routes</a></li>
+    <li><a href="#full-flow" style="color:#54a0ff;">التدفق الكامل — من البداية للنهاية</a></li>
+    <li><a href="#companies" style="color:#54a0ff;">ليه الشركات بتعمل كده؟</a></li>
+  </ol>
+</div>
+
+<!-- INTRO -->
+<div class="section" id="intro">
+  <h2>نظرة عامة — الفرق بين الطريقتين</h2>
+
+  <div class="code-compare">
+    <div class="code-box">
+      <div class="title" style="color:#e94560;">❌ الطريقة الحالية في المشروع</div>
+      <code><span class="c">// Controller</span>
+<span class="k">const</span> user = <span class="k">new</span> <span class="v">User</span>();
+<span class="k">const</span> fn = <span class="k">await</span> user.<span class="f">refreshAccessToken</span>();
+<span class="k">const</span> result = <span class="k">await</span> <span class="f">fn</span>(req, res, next);
+
+<span class="c">// User.class.ts</span>
+<span class="k">async</span> <span class="f">refreshAccessToken</span>() {
+  <span class="k">return</span> <span class="k">async</span> (req, res, next) => {
+    <span class="c">// logic (req, res, next جوا)</span>
+    <span class="k">return</span> { accessToken, refreshToken };
+  };
+}</code>
+    </div>
+    <div class="code-box">
+      <div class="title" style="color:#28a745;">✅ الطريقة الاحترافية</div>
+      <code><span class="c">// Controller</span>
+<span class="k">const</span> result = <span class="k">await</span> authService.<span class="f">refreshAccessToken</span>(
+  req.cookies.refreshToken
+);
+
+res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.accessToken, {...});
+res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.refreshToken, {...});
+
+<span class="c">// auth.service.ts</span>
+<span class="k">async</span> <span class="f">refreshAccessToken</span>(refreshToken: <span class="v">string</span>) {
+  <span class="c">// logic (باخد token string وارجع data)</span>
+  <span class="k">return</span> { accessToken, refreshToken };
+}</code>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>الخاصية</th><th>الحالي</th><th>الاحترافي</th></tr>
+    <tr><td>الـ Service بياخد إيه؟</td><td>مفيش parameters</td><td>بياخد <code>refreshToken: string</code></td></tr>
+    <tr><td>الـ Service بيرجع إيه؟</td><td>دالة (middleware)</td><td>Object عادي (data)</td></tr>
+    <tr><td>مين يقرا الـ cookies؟</td><td>الـ Service جوا الـ middleware</td><td>الـ Controller (قبل ما ينادي الـ Service)</td></tr>
+    <tr><td>Testing سهل؟</td><td>صعب (محتاج mock Express)</td><td>سهل (بستدعي Service بدالة عادية)</td></tr>
+    <tr><td>فيه فصل مسؤوليات؟</td><td>لا (كل حاجة في بعضها)</li></td><td>نعم (Controller → Service → Model)</td></tr>
+  </table>
+</div>
+
+<!-- FILE STRUCTURE -->
+<div class="section page-break" id="file-structure">
+  <h2>هيكل الملفات (الطريقة الاحترافية)</h2>
+
+  <pre>src/
+├── server.ts                          <span class="c">// Entry point</span>
+├── config/
+│   └── env.ts                         <span class="c">// المتغيرات البيئية</span>
+│
+├── shared/
+│   ├── middleware/
+│   │   └── authenticate.middleware.ts <span class="c">// isAuthenticated</span>
+│   ├── errors/
+│   │   └── AppError.ts               <span class="c">// ApiError</span>
+│   └── utils/
+│       └── apiResponse.ts            <span class="c">// ApiResponse</span>
+│
+└── modules/
+    └── auth/
+        ├── auth.routes.ts             <span class="c">// POST /refresh-accessToken</span>
+        ├── auth.controller.ts         <span class="c">// ياخد req, يستدعي service, يرد response</span>
+        ├── auth.service.ts            <span class="c">// Business Logic — محض data</span>
+        ├── auth.model.ts              <span class="c">// Prisma queries</span>
+        ├── auth.validators.ts         <span class="c">// Zod schemas</span>
+        └── token.service.ts           <span class="c">// توليد JWT (مشترك بين الموديولات)</span></pre>
+
+  <div class="note">
+    <strong>💡 ليه token.service.ts في module/auth مش في shared؟</strong><br>
+    - لو هو خاص بـ Auth بس → يفضل في الـ module<br>
+    - لو موديولات تانية هتستخدمه (زي Payment أو Delivery) → ينقل لـ shared/utils/tokens.ts<br>
+    في الشركات، الحاجة المشتركة بتروح في <code>shared/</code> أو <code>common/</code>.
+  </div>
+</div>
+
+<!-- 1. ROUTES -->
+<div class="section page-break" id="auth-routes">
+  <h2>1. auth.routes.ts — تعريف الـ Route</h2>
+
+  <pre><span class="c">// modules/auth/auth.routes.ts</span>
+<span class="k">import</span> { Router } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { refreshAccessToken } <span class="k">from</span> <span class="s">"./auth.controller"</span>;
+<span class="k">import</span> { validate } <span class="k">from</span> <span class="s">"../../shared/middleware/validate.middleware"</span>;
+
+<span class="k">const</span> router = <span class="v">Router</span>();
+
+<span class="c">// POST /api/v1/auth/refresh-accessToken</span>
+router.<span class="f">post</span>(
+  <span class="s">"/refresh-accessToken"</span>,
+  refreshAccessToken
+);
+
+<span class="k">export default</span> router;</pre>
+
+  <div class="tip">
+    <strong>🔍 الفرق:</strong> مفيش isAuthenticated middleware هنا. ليه؟ لأن الـ refresh token نفسه هو اللي بيثبت هوية المستخدم (مش محتاج access token). لو حطينا isAuthenticated، والمستخدم access token بتاعه خلص، مش هيعرف يجدد خالص!.
+  </div>
+</div>
+
+<!-- 2. CONTROLLER -->
+<div class="section page-break" id="auth-controller">
+  <h2>2. auth.controller.ts — استقبال الطلب</h2>
+
+  <pre><span class="c">// modules/auth/auth.controller.ts</span>
+<span class="k">import</span> { <span class="v">Request</span>, <span class="v">Response</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { authService } <span class="k">from</span> <span class="s">"./auth.service"</span>;
+<span class="k">import</span> { <span class="v">StatusCodes</span> } <span class="k">from</span> <span class="s">"http-status-codes"</span>;
+<span class="k">import</span> { asyncHandler } <span class="k">from</span> <span class="s">"../../shared/utils/asyncHandler"</span>;
+
+<span class="k">export const</span> <span class="f">refreshAccessToken</span> = <span class="f">asyncHandler</span>(
+  <span class="k">async</span> (req: <span class="v">Request</span>, res: <span class="v">Response</span>) => {
+    <span class="c">// ===============================================</span>
+    <span class="c">// 1. الـ Controller هو اللي يقرا الـ cookies</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">const</span> incomingRefreshToken = req.cookies?.refreshToken;
+
+    <span class="k">if</span> (!incomingRefreshToken) {
+      <span class="k">return</span> res.<span class="f">status</span>(<span class="n">401</span>).<span class="f">json</span>({
+        success: <span class="k">false</span>,
+        message: <span class="s">"Refresh token is missing"</span>
+      });
+    }
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// 2. استدعاء Service — ويرجع data عادي</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">const</span> result = <span class="k">await</span> authService.<span class="f">refreshAccessToken</span>(incomingRefreshToken);
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// 3. الـ Controller هو اللي يتعامل مع الـ cookies</span>
+    <span class="c">// ===============================================</span>
+    res.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.accessToken, {
+      httpOnly: <span class="k">true</span>,
+      secure: process.env.<span class="v">NODE_ENV</span> === <span class="s">"production"</span>,
+      sameSite: <span class="s">"lax"</span>,
+      path: <span class="s">"/"</span>,
+      maxAge: <span class="n">24</span> * <span class="n">60</span> * <span class="n">60</span> * <span class="n">1000</span>, <span class="c">// 24 ساعة</span>
+    });
+
+    res.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.refreshToken, {
+      httpOnly: <span class="k">true</span>,
+      secure: process.env.<span class="v">NODE_ENV</span> === <span class="s">"production"</span>,
+      sameSite: <span class="s">"lax"</span>,
+      path: <span class="s">"/"</span>,
+      maxAge: <span class="n">7</span> * <span class="n">24</span> * <span class="n">60</span> * <span class="n">60</span> * <span class="n">1000</span>, <span class="c">// 7 أيام</span>
+    });
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// 4. الـ Controller يرد Response</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">return</span> res.<span class="f">status</span>(<span class="n">200</span>).<span class="f">json</span>({
+      success: <span class="k">true</span>,
+      data: {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      },
+      message: <span class="s">"Token refreshed successfully"</span>,
+    });
+  }
+);</pre>
+
+  <div class="tip">
+    <strong>✅ واضح؟</strong> الـ Controller مسؤول عن:<br>
+    1. قراءة data من الـ request (cookies, body, params)<br>
+    2. استدعاء الـ Service<br>
+    3. التعامل مع الـ Response (cookies, status, json)<br>
+    <strong>مش مسؤول عن:</strong> Business Logic، التحقق من صحة التوكن، قاعدة البيانات.
+  </div>
+</div>
+
+<!-- 3. SERVICE -->
+<div class="section page-break" id="auth-service">
+  <h2>3. auth.service.ts — Business Logic</h2>
+
+  <pre><span class="c">// modules/auth/auth.service.ts</span>
+<span class="k">import</span> { authModel } <span class="k">from</span> <span class="s">"./auth.model"</span>;
+<span class="k">import</span> { tokenService } <span class="k">from</span> <span class="s">"./token.service"</span>;
+<span class="k">import</span> { <span class="v">AppError</span> } <span class="k">from</span> <span class="s">"../../shared/errors/AppError"</span>;
+<span class="k">import</span> jwt <span class="k">from</span> <span class="s">"jsonwebtoken"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+
+<span class="k">class</span> <span class="v">AuthService</span> {
+
+  <span class="k">async</span> <span class="f">refreshAccessToken</span>(incomingRefreshToken: <span class="v">string</span>) {
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 1: التحقق من صحة JWT signature</span>
+    <span class="c">// ===============================================</span>
+    <span class="c">// jwt.verify يتأكد من:</span>
+    <span class="c">//   - التوقيع سليم (matching REFRESH_TOKEN_SECRET)</span>
+    <span class="c">//   - التوكن لسه صالح (مخلصش)</span>
+    <span class="c">// لو أي حاجة غلط → يحصل exception</span>
+    <span class="k">let</span> payload: <span class="v">any</span>;
+    <span class="k">try</span> {
+      payload = jwt.<span class="f">verify</span>(incomingRefreshToken, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!);
+    } <span class="k">catch</span> (error) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid or expired refresh token"</span>, <span class="n">401</span>);
+    }
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 2: جلب المستخدم من قاعدة البيانات</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">const</span> user = <span class="k">await</span> authModel.<span class="f">findById</span>(payload.id);
+
+    <span class="k">if</span> (!user) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"User not found"</span>, <span class="n">404</span>);
+    }
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 3: مقارنة التوكن مع المخزن في DB</span>
+    <span class="c">// ===============================================</span>
+    <span class="c">// ده أهم خطوة في الأمان: لو الـ refresh token اللي في DB</span>
+    <span class="c">">مختلف عن اللي جاي من المستخدم → معناه إن التوكن اتلغى</span>
+    <span class="c">// (مثلاً بسبب rotation سابق أو logout)</span>
+    <span class="k">if</span> (user.refreshToken !== incomingRefreshToken) {
+      <span class="c">// OPTIONAL: لو حصل rotation قبل كده والقديم اتسرق →</span>
+      <span class="c">// بنلغي كل التوكنات عشان السارق ما يستفدش</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Refresh token has been revoked"</span>, <span class="n">401</span>);
+    }
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 4: التحقق من حالة الحساب</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">if</span> (user.isBanned) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account is banned"</span>, <span class="n">403</span>);
+    }
+
+    <span class="k">if</span> (user.lockedUntil && user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>()) {
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Account is locked"</span>, <span class="n">403</span>);
+    }
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 5: توليد توكنات جديدة (TOKEN ROTATION)</span>
+    <span class="c">// ===============================================</span>
+    <span class="c">// بنعمل token rotation: نولد access + refresh جدد</span>
+    <span class="k">const</span> newAccessToken = tokenService.<span class="f">generateAccessToken</span>({ id: user.id });
+    <span class="k">const</span> newRefreshToken = tokenService.<span class="f">generateRefreshToken</span>({ id: user.id });
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 6: حفظ الـ refresh الجديد في DB (إلغاء القديم)</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">await</span> authModel.<span class="f">updateRefreshToken</span>(user.id, newRefreshToken);
+
+    <span class="c">// ===============================================</span>
+    <span class="c">// الخطوة 7: إرجاع النتيجة للـ Controller</span>
+    <span class="c">// ===============================================</span>
+    <span class="k">return</span> {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+}
+
+<span class="k">export const</span> authService = <span class="k">new</span> <span class="v">AuthService</span>();</pre>
+
+  <div class="tip">
+    <strong>🤔 الفرق الجوهري:</strong><br>
+    - Service بياخد <code>incomingRefreshToken: string</code> ← data من المستخدم<br>
+    - Service بيرجع <code>{ accessToken, refreshToken }</code> ← data عادية<br>
+    - Service <strong>مش عنده أي فكرة عن Express</strong> (لا req, لا res, لا next)<br>
+    - تقدر تختبر Service بكل سهولة: <code>authService.refreshAccessToken("some-token")</code>
+  </div>
+</div>
+
+<!-- 4. MODEL -->
+<div class="section page-break" id="auth-model">
+  <h2>4. auth.model.ts — طبقة قاعدة البيانات</h2>
+
+  <pre><span class="c">// modules/auth/auth.model.ts</span>
+<span class="k">import</span> prisma <span class="k">from</span> <span class="s">"../../config/database"</span>;
+
+<span class="k">class</span> <span class="v">AuthModel</span> {
+  <span class="c">// ===============================================</span>
+  <span class="c">// كل دوال Prisma مركزة هنا</span>
+  <span class="c">// ===============================================</span>
+
+  <span class="k">async</span> <span class="f">findById</span>(id: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">findUnique</span>({
+      where: { id },
+      select: {
+        id: <span class="k">true</span>,
+        refreshToken: <span class="k">true</span>,
+        isBanned: <span class="k">true</span>,
+        lockedUntil: <span class="k">true</span>,
+      },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">updateRefreshToken</span>(userId: <span class="v">string</span>, newRefreshToken: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">update</span>({
+      where: { id: userId },
+      data: { refreshToken: newRefreshToken },
+    });
+  }
+
+  <span class="k">async</span> <span class="f">findUserByIdentifier</span>(identifier: <span class="v">string</span>) {
+    <span class="k">return</span> prisma.user.<span class="f">findFirst</span>({
+      where: {
+        <span class="v">OR</span>: [{ email: identifier }, { phone: identifier }],
+      },
+    });
+  }
+}
+
+<span class="k">export const</span> authModel = <span class="k">new</span> <span class="v">AuthModel</span>();</pre>
+
+  <div class="note">
+    <strong>💡 ليه Data Layer منفصل؟</strong><br>
+    1. <strong>Testing:</strong> تقدر تستخدم Mock للـ Model بدون ما تحتاج قاعدة بيانات حقيقية<br>
+    2. <strong>صيانة:</strong> لو غيرت ORM من Prisma لحاجة تانية (Drizzle, TypeORM) — التغيير في مكان واحد<br>
+    3. <strong>وضوح:</strong> كل queries الـ DB مركزة — مش مبعثرة في Service<br>
+    4. <strong>Performance:</strong> تقدر تضيف caching layer بسهولة (Redis) بين Service و Model
+  </div>
+</div>
+
+<!-- 5. TOKEN SERVICE -->
+<div class="section page-break" id="token-service">
+  <h2>5. token.service.ts — توليد التوكنات</h2>
+
+  <pre><span class="c">// modules/auth/token.service.ts</span>
+<span class="c">// أو ممكن يكون في shared/utils/tokens.ts لو أكتر من موديول محتاجه</span>
+<span class="k">import</span> jwt <span class="k">from</span> <span class="s">"jsonwebtoken"</span>;
+<span class="k">import</span> { <span class="v">ENV</span> } <span class="k">from</span> <span class="s">"../../config/env"</span>;
+
+<span class="k">class</span> <span class="v">TokenService</span> {
+  <span class="f">generateAccessToken</span>(payload: <span class="v">object</span>): <span class="v">string</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!, {
+      expiresIn: <span class="s">"15m"</span>, <span class="c">// 15 دقيقة — مش 24 ساعة</span>
+    });
+  }
+
+  <span class="f">generateRefreshToken</span>(payload: <span class="v">object</span>): <span class="v">string</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!, {
+      expiresIn: <span class="s">"7d"</span>, <span class="c">// 7 أيام</span>
+    });
+  }
+
+  <span class="f">verifyAccessToken</span>(token: <span class="v">string</span>) {
+    <span class="k">return</span> jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!);
+  }
+
+  <span class="f">verifyRefreshToken</span>(token: <span class="v">string</span>) {
+    <span class="k">return</span> jwt.<span class="f">verify</span>(token, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!);
+  }
+}
+
+<span class="k">export const</span> tokenService = <span class="k">new</span> <span class="v">TokenService</span>();
+
+<span class="c">// استخدم string durations مش milliseconds — أسهل وأوضوح:</span>
+<span class="c">// expiresIn: "15m"  (15 دقيقة) أفضل من expiresIn: 900000</span>
+<span class="c">// expiresIn: "7d"   (7 أيام)   أفضل من expiresIn: 604800000</span></pre>
+
+  <div class="warn">
+    <strong>⚠️ تعديل مهم:</strong> في المشروع الحالي، الـ Access Token صلاحيته 24 ساعة — ده كتير جدًا. الأحسن:<br>
+    - <strong>Access Token:</strong> 15-30 دقيقة (يحد من الضرر لو اتسرق)<br>
+    - <strong>Refresh Token:</strong> 7-30 يوم (حسب حاجة التطبيق)<br>
+    الفكرة: لو اتسرق access token، الضرر محدود بربع ساعة. الـ refresh token يتجدد كل ما نستخدمه (rotation) فحتى لو اتسرق، أول مرة الضحية تعمل refresh، السارق بيقعد معاه توكن ملغي.
+  </div>
+</div>
+
+<!-- 6. AUTHENTICATE MIDDLEWARE -->
+<div class="section page-break" id="authenticate-middleware">
+  <h2>6. authenticate.middleware.ts — حماية الـ Routes</h2>
+
+  <pre><span class="c">// shared/middleware/authenticate.middleware.ts</span>
+<span class="k">import</span> { <span class="v">Request</span>, <span class="v">Response</span>, <span class="v">NextFunction</span> } <span class="k">from</span> <span class="s">"express"</span>;
+<span class="k">import</span> { <span class="v">AppError</span> } <span class="k">from</span> <span class="s">"../errors/AppError"</span>;
+<span class="k">import</span> { tokenService } <span class="k">from</span> <span class="s">"../../modules/auth/token.service"</span>;
+
+<span class="k">export const</span> <span class="f">authenticate</span> = (
+  req: <span class="v">Request</span>,
+  _res: <span class="v">Response</span>,
+  next: <span class="v">NextFunction</span>
+) => {
+  <span class="c">// ===============================================</span>
+  <span class="c">// 1. نجيب الـ access token</span>
+  <span class="c">// ===============================================</span>
+  <span class="k">const</span> token =
+    req.cookies?.accessToken ||
+    (req.headers?.authorization?.<span class="f">startsWith</span>(<span class="s">"Bearer"</span>) &&
+      req.headers.authorization.<span class="f">split</span>(<span class="s">" "</span>)[<span class="n">1</span>]);
+
+  <span class="k">if</span> (!token) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Authentication required"</span>, <span class="n">401</span>);
+  }
+
+  <span class="c">// ===============================================</span>
+  <span class="c">// 2. نتحقق من صحة الـ JWT</span>
+  <span class="c">// ===============================================</span>
+  <span class="k">try</span> {
+    <span class="k">const</span> payload = tokenService.<span class="f">verifyAccessToken</span>(token);
+    <span class="c">// نحط بيانات المستخدم في req.user عشان الـ endpoint يستخدمها</span>
+    req.user = payload;
+    <span class="f">next</span>();
+  } <span class="k">catch</span> (error) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">AppError</span>(<span class="s">"Invalid or expired access token"</span>, <span class="n">401</span>);
+  }
+};</pre>
+
+  <div class="note">
+    <strong>🔍 ازاي نستخدمها في الـ Routes:</strong><br>
+    <pre style="margin-top:8px;"><span class="k">import</span> { authenticate } <span class="k">from</span> <span class="s">"../../shared/middleware/authenticate.middleware"</span>;
+
+<span class="c">// Routes محتاجة تسجيل دخول:</span>
+router.<span class="f">get</span>(<span class="s">"/profile"</span>, authenticate, profileController);
+router.<span class="f">post</span>(<span class="s">"/logout"</span>, authenticate, logoutController);
+
+<span class="c">// Routes عامة (زي refresh):</span>
+router.<span class="f">post</span>(<span class="s">"/refresh-accessToken"</span>, refreshAccessToken);
+<span class="c">// مفيش authenticate هنا — مش محتاج access token</span></pre>
+  </div>
+</div>
+
+<!-- FULL FLOW -->
+<div class="section page-break" id="full-flow">
+  <h2>التدفق الكامل — من البداية للنهاية</h2>
+
+  <div class="flow">
+    <div class="flow-step hl">العميل عنده access token قديم خلص</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يبعت طلب POST /refresh-accessToken<br>ومعه refreshToken في الـ cookies</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step blue"><strong>auth.routes.ts:</strong><br>يطابق المسار (مفيش authenticate)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step blue"><strong>auth.controller.ts:</strong><br>يقرا req.cookies.refreshToken<br>ينادي authService.refreshAccessToken(token)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step green"><strong>auth.service.ts:</strong><br>1. jwt.verify مع REFRESH_TOKEN_SECRET<br>2. authModel.findById(payload.id)<br>3. يقارن token مع user.refreshToken<br>4. يتأكد من ban + lock<br>5. يولد tokens جديدة<br>6. authModel.updateRefreshToken()<br>7. يرجع { accessToken, refreshToken }</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step blue"><strong>auth.controller.ts:</strong><br>يضبط الـ cookies بالتوكنات الجديدة<br>يرد Response 200</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step hl">العميل عنده access + refresh tokens جدد ✨</div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h4>🔐 auth.routes.ts</h4>
+      <p><code>POST /refresh-accessToken</code><br>← مفيش authenticate middleware</p>
+    </div>
+    <div class="card">
+      <h4>🎮 auth.controller.ts</h4>
+      <p>يقرا cookies → ينادي Service → يضبط cookies → يرد response</p>
+    </div>
+    <div class="card">
+      <h4>🧠 auth.service.ts</h4>
+      <p>Business Logic: تحقق + مقارنة + توليد — يرجع data</p>
+    </div>
+    <div class="card">
+      <h4>🗄️ auth.model.ts</h4>
+      <p>Prisma queries: findById, updateRefreshToken</p>
+    </div>
+    <div class="card">
+      <h4>🔑 token.service.ts</h4>
+      <p>توليد JWT: sign + verify للـ access والـ refresh</p>
+    </div>
+  </div>
+</div>
+
+<!-- WHY COMPANIES DO THIS -->
+<div class="section page-break" id="companies">
+  <h2>ليه الشركات بتعمل كده؟</h2>
+
+  <table>
+    <tr><th>السبب</th><th>الشرح</th><th>في المشروع الحالي</th></tr>
+    <tr>
+      <td><strong>Separation of Concerns</strong><br>(فصل المسؤوليات)</td>
+      <td>كل طبقة ليها مسؤولية واحدة واضحة. Controller ياخد request ويرد response. Service يعمل business logic. Model يتعامل مع DB.</td>
+      <td><span class="badge" style="background:#2a1a1a;color:#e94560;">❌ Class فيه Business Logic + Response Logic + DB queries كلها في نفس المكان</span></td>
+    </tr>
+    <tr>
+      <td><strong>Testability</strong><br>(قابلية الاختبار)</td>
+      <td>تقدر تختبر Service بدون Express: <code>authService.refreshAccessToken("fake-token")</code> وتتأكد من النتيجة أو الخطأ.</td>
+      <td><span class="badge" style="background:#2a1a1a;color:#e94560;">❌ محتاج تعمل mock لـ req, res, next كاملين عشان تختبر دالة واحدة</span></td>
+    </tr>
+    <tr>
+      <td><strong>Maintainability</strong><br>(سهولة الصيانة)</td>
+      <td>عايز تغير Prisma لـ Drizzle؟ عدل auth.model.ts فقط. عايز تغير JWT لـ别的 library؟ عدل token.service.ts فقط.</td>
+      <td><span class="badge" style="background:#2a1a1a;color:#e94560;">❌ Prisma queries مبعثرة جوا User.class.ts — لو عايز تغير ORM هتتعب</span></td>
+    </tr>
+    <tr>
+      <td><strong>Developer Experience</strong><br>(سهولة على المبرمج)</td>
+      <td>أي مبرمج جديد يفتح المشروع يفهم: "خليني أشوف الـ Controller ← أشوف الـ Service ← خلاص فهمت". نمط مألوف.</td>
+      <td><span class="badge" style="background:#2a1a1a;color:#e94560;">❌ أنت شخصيًا اتلخبطت في الـ User.class وعملت سؤال — دليل إنه مش واضح</span></td>
+    </tr>
+    <tr>
+      <td><strong>Scalability</strong><br>(قابلية التوسع)</td>
+      <td>لما عايز تفصل Auth Module لـ Microservice مستقبلًا، بتنسق فولدر <code>modules/auth/</code> كله وتضيفله HTTP layer.</td>
+      <td><span class="badge" style="background:#1a2a1a;color:#28a745;">✅ الـ README بياخد ده في الاعتبار — لكن التطبيق الفعلي مش متوافق</span></td>
+    </tr>
+  </table>
+
+  <div class="tip" style="text-align:center;padding:30px;">
+    <h3 style="color:#28a745;">الخلاصة في جملة واحدة</h3>
+    <p style="font-size:1.2em;margin-top:10px;">الـ Service بياخد <strong>data</strong> ويرجع <strong>data</strong> — مش بياخد <strong>req/res</strong> ويرجع <strong>middleware</strong>.</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" style="border-top-color:#28a745;">
+      <h4 style="color:#28a745;">📦 قبل — ما ينفعش</h4>
+      <p><code>authService.refreshAccessToken()</code><br>← مفيش parameter<br>← ترجع middleware function</p>
+    </div>
+    <div class="card" style="border-top-color:#e94560;">
+      <h4 style="color:#e94560;">📦 بعد — الصح</h4>
+      <p><code>authService.refreshAccessToken(token)</code><br>← تاخد token: string<br>← ترجع { accessToken, refreshToken }</p>
+    </div>
+  </div>
+
+  <p style="text-align:center;margin-top:20px;color:#666;">
+    ThreadMarket SaaS — يوليو 2026
+  </p>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>

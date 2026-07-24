@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Controller & Refresh Token - شرح تفصيلي</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Consolas:wght@400;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0f0f1a;
+    color: #e0e0e0;
+    line-height: 1.9;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: white;
+    padding: 50px 0 30px;
+    text-align: center;
+    border-bottom: 3px solid #e94560;
+  }
+  .header h1 {
+    font-size: 2.5em;
+    font-weight: 800;
+    background: linear-gradient(90deg, #e94560, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .sub { opacity: 0.8; font-size: 1.1em; margin-top: 8px; }
+
+  .section {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 25px 0;
+    border: 1px solid #2a2a4a;
+  }
+  .section h2 {
+    color: #e94560;
+    font-size: 1.6em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #2a2a4a;
+  }
+  .section h3 {
+    color: #ff9f43;
+    font-size: 1.2em;
+    margin: 25px 0 12px;
+  }
+  .section h4 {
+    color: #54a0ff;
+    font-size: 1.05em;
+    margin: 18px 0 8px;
+  }
+  .section p { margin: 10px 0; color: #c0c0d0; }
+  .section ul, .section ol { padding-right: 22px; margin: 10px 0; }
+  .section ul li, .section ol li { margin: 6px 0; color: #c0c0d0; }
+
+  pre {
+    background: #0d0d1a;
+    color: #e0e0e0;
+    padding: 18px 20px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.82em;
+    direction: ltr;
+    text-align: left;
+    margin: 15px 0;
+    border: 1px solid #2a2a4a;
+    position: relative;
+  }
+  pre .line-num {
+    display: inline-block;
+    width: 30px;
+    color: #555;
+    user-select: none;
+  }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  pre .c { color: #6a9955; font-style: italic; }
+  pre .v { color: #9cdcfe; }
+  pre .n { color: #b5cea8; }
+  pre .o { color: #d4d4d4; }
+  pre .highlight-line { background: #2a1a1a; display: block; margin: 0 -20px; padding: 0 20px; border-right: 3px solid #e94560; }
+
+  .note {
+    background: #1a2a2a;
+    border-right: 4px solid #17a2b8;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  .warn {
+    background: #2a1a1a;
+    border-right: 4px solid #e94560;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  .tip {
+    background: #1a2a1a;
+    border-right: 4px solid #28a745;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 25px 0;
+    direction: ltr;
+  }
+  .flow-step {
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    border-radius: 8px;
+    padding: 12px 24px;
+    margin: 4px;
+    text-align: center;
+    min-width: 200px;
+    color: #e0e0e0;
+  }
+  .flow-step.highlight { border-color: #e94560; background: #2a1a2a; }
+  .flow-arrow { color: #e94560; font-size: 1.2em; margin: 2px 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 0.9em;
+  }
+  th {
+    background: #0d0d1a;
+    color: #e94560;
+    padding: 12px;
+    text-align: right;
+    font-weight: 600;
+    border-bottom: 2px solid #e94560;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #2a2a4a;
+    color: #c0c0d0;
+  }
+  tr:hover td { background: #1a1a2e; }
+
+  .file-ref {
+    display: inline-block;
+    background: #2a2a4a;
+    color: #54a0ff;
+    padding: 3px 12px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85em;
+    direction: ltr;
+  }
+
+  .page-break { page-break-before: always; }
+
+  @media print {
+    body { background: white; color: #333; }
+    .section { background: white; border-color: #ddd; }
+    .section h2 { color: #e94560; }
+    .header { background: #1a1a2e; }
+    pre { background: #f5f5f5; color: #333; border-color: #ddd; }
+    .note, .warn, .tip { border-color: #999; }
+    td, th { border-color: #ddd; }
+    .section p, .section ul li, td { color: #555; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>User Controller & Refresh Token</h1>
+  <div class="sub">شرح تفصيلي لكل سطر في الكود</div>
+</div>
+
+<div class="container">
+
+<!-- QUICK INDEX -->
+<div class="section">
+  <h2>📋 الفهرس</h2>
+  <ol>
+    <li><a href="#overview" style="color:#54a0ff;">نظرة عامة على الـ Controller</a></li>
+    <li><a href="#files" style="color:#54a0ff;">الملفات المرتبطة</a></li>
+    <li><a href="#flow" style="color:#54a0ff;">تتبع التدفق الكامل لـ Refresh Token</a></li>
+    <li><a href="#refresh-controller" style="color:#54a0ff;">شرح السطر: الـ Controller</a></li>
+    <li><a href="#refresh-class" style="color:#54a0ff;">شرح السطر: الـ Class Method</a></li>
+    <li><a href="#generateTokens" style="color:#54a0ff;">دوال توليد التوكنات</a></li>
+    <li><a href="#middleware" style="color:#54a0ff;">الـ Middleware (isAuthenticated)</a></li>
+    <li><a href="#security" style="color:#54a0ff;">الاعتبارات الأمنية</a></li>
+  </ol>
+</div>
+
+<!-- ==================== 1. OVERVIEW ==================== -->
+<div class="section" id="overview">
+  <h2>1. نظرة عامة على الـ Controller</h2>
+
+  <p>ملف <span class="file-ref">src/controllers/user.controllers.ts</span> هو المسؤول عن استقبال طلبات HTTP المتعلقة بالمستخدمين (Auth) وتحويلها إلى دوال في طبقة الـ Business Logic (ملف <span class="file-ref">src/classes/User.class.ts</span>).</p>
+
+  <p>الـ Controller مش بيعمل أي logic بنفسه — هو مجرد "وسيط" بياخد الـ request، وينادي الدالة المناسبة، ويرجع الـ response.</p>
+
+  <h3>الدوال الموجودة في الـ Controller:</h3>
+  <table>
+    <tr><th>الدالة</th><th>المسار</th><th>الوصف</th></tr>
+    <tr><td><code>register</code></td><td>POST /register</td><td>تسجيل مستخدم جديد مع إرسال OTP</td></tr>
+    <tr><td><code>login</code></td><td>POST /login</td><td>تسجيل الدخول وإصدار التوكنات</td></tr>
+    <tr><td><code>verifyRegisterOtp</code></td><td>POST /register-verify-otp</td><td>تأكيد OTP للتسجيل وإنشاء المستخدم في DB</td></tr>
+    <tr><td><code>logout</code></td><td>POST /logout</td><td>تسجيل الخروج ومسح التوكنات</td></tr>
+    <tr><td><code>forgetPassword</code></td><td>POST /forget-password</td><td>إرسال OTP لتغيير كلمة السر</td></tr>
+    <tr><td><code>verifyOtp</code></td><td>POST /verify-otp</td><td>تأكيد OTP لكلمة السر</td></tr>
+    <tr><td><code>resetPassword</code></td><td>PATCH /reset-password</td><td>تغيير كلمة السر بعد التأكيد</td></tr>
+    <tr><td><code>refreshAccessToken</code></td><td>POST /refresh-accessToken</td><td>تجديد التوكنات (محور شرحنا)</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>💡 ملاحظة:</strong> دوال زي <code>verifyRegisterOtp</code>, <code>logout</code>, <code>verifyOtp</code>, <code>resetPassword</code>, <code>refreshAccessToken</code> كلها بتستخدم نمط غريب: الدالة في الـ Class بترجع <strong>middleware function</strong> (دالة جوه دالة)، والـ Controller بيناديها بـ <code>(req, res, next)</code>. هنتكلم عن ده بالتفصيل.
+  </div>
+</div>
+
+<!-- ==================== 2. FILES ==================== -->
+<div class="section" id="files">
+  <h2>2. الملفات المرتبطة بالـ Refresh Token</h2>
+
+  <table>
+    <tr><th>الملف</th><th>الوظيفة</th></tr>
+    <tr>
+      <td><span class="file-ref">src/controllers/user.controllers.ts</span></td>
+      <td>طبقة الـ Controller - تستقبل الـ HTTP request وتستدعي دوال الـ Class</td>
+    </tr>
+    <tr>
+      <td><span class="file-ref">src/classes/User.class.ts</span></td>
+      <td>طبقة الـ Business Logic - فيها دالة <code>refreshAccessToken()</code> اللي بتعمل التحقق والتجديد</td>
+    </tr>
+    <tr>
+      <td><span class="file-ref">src/helpers/generateTokens.ts</span></td>
+      <td>دالتين لتوليد JWT: <code>generateAccessToken</code> و <code>generateRefreshToken</code></td>
+    </tr>
+    <tr>
+      <td><span class="file-ref">src/helpers/ENV.ts</span></td>
+      <td>تحميل المتغيرات البيئية (الأسرار، فترات الصلاحية)</td>
+    </tr>
+    <tr>
+      <td><span class="file-ref">src/middlewares/isAuthenticated.ts</span></td>
+      <td>Middleware يتأكد من صحة الـ access token قبل الوصول للـ routes المحمية</td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <strong>🔗 تدفق الاستدعاء:</strong><br>
+    HTTP Request → Router → isAuthenticated (middleware) → Controller → User.class (business logic) → Prisma (DB) → Response
+  </div>
+</div>
+
+<!-- ==================== 3. FLOW ==================== -->
+<div class="section page-break" id="flow">
+  <h2>3. تتبع التدفق الكامل لـ Refresh Token</h2>
+  <p>لما الـ access token يخلص (بتاع 24 ساعة بنسبة للمشروع ده)، بدل ما العميل يسجل دخول تاني، بنستخدم الـ refresh token عشان نجيب واحد جديد.</p>
+
+  <div class="flow-diagram">
+    <div class="flow-step highlight">العميل يطلب تجديد التوكنات</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">الـ Controller يستقبل الطلب وينشئ User object</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">ينادي user.refreshAccessToken() → ترجع middleware function</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">الـ Controller ينفذ middleware function بـ (req, res, next)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يستخرج refreshToken من الـ cookies أو الـ Authorization header</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يتأكد من صحة التوكن (jwt.verify) باستخدام REFRESH_TOKEN_SECRET</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يلاقي المستخدم في قاعدة البيانات و يقارن التوكن</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يتأكد من إن الحساب مش banned و مش locked</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يولد accessToken + refreshToken <strong>جدد</strong></div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يحفظ الـ refreshToken الجديد في DB (يلغي القديم)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">الـ Controller يضبط الـ cookies بالتوكنات الجديدة</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">يرجع Response للعميل</div>
+  </div>
+
+  <div class="warn">
+    <strong>⚠️ مهم:</strong> الـ refresh token بيتم <strong>تدويره (Rotation)</strong> - كل مرة نعمل refresh، بنولد refresh token جديد وبنلغي القديم. ده معناه إن لو حد سرق الـ refresh token، أول ما الضحية تعمل refresh، السارق بيقعد معاه توكن ملغي.
+  </div>
+</div>
+
+<!-- ==================== 4. CONTROLLER ==================== -->
+<div class="section page-break" id="refresh-controller">
+  <h2>4. شرح الـ Controller: refreshAccessToken</h2>
+  <p>من ملف <span class="file-ref">src/controllers/user.controllers.ts</span> — الأسطر 142 إلى 161</p>
+
+  <pre>
+<span class="c">// === السطر 142: تصدير الدالة ===</span>
+<span class="k">export const</span> <span class="f">refreshAccessToken</span> = <span class="f">asyncHandler</span>(
+  <span class="k">async</span> (req: <span class="v">Request</span>, res: <span class="v">Response</span>, next: <span class="v">NextFunction</span>) => {
+
+    <span class="c">// === السطر 144: إنشاء instance من User class ===</span>
+    <span class="k">const</span> user = <span class="k">new</span> <span class="v">User</span>();
+
+    <span class="c">// === السطر 145: استدعاء business logic ===</span>
+    <span class="c">//     الدالة refreshAccessToken() في User.class.ts ترجع MIDDLEWARE</span>
+    <span class="c">//     يعني هي دالة جوه دالة (Closure) محتاجة (req, res, next)</span>
+    <span class="k">const</span> <span class="v">refreshMiddleware</span> = <span class="k">await</span> user.<span class="f">refreshAccessToken</span>();
+
+    <span class="c">// === السطر 146: تنفيذ الـ middleware ===</span>
+    <span class="c">//     بنادي الـ middleware function وندهيلها req, res, next</span>
+    <span class="c">//     الدالة جواها كل logic التجديد وترجع result object</span>
+    <span class="k">const</span> <span class="v">result</span> = <span class="k">await</span> <span class="v">refreshMiddleware</span>(req, res, next);
+
+    <span class="c">// === السطر 148-155: ضبط الـ cookies بالتوكنات الجديدة ===</span>
+    <span class="c">//     بنحط accessToken في cookie مع срок الصلاحية بتاعه</span>
+    <span class="v">res</span>.<span class="f">cookie</span>(<span class="s">"accessToken"</span>, result.data.accessToken, {
+      ...<span class="v">baseCookieOptions</span>,
+      <span class="v">maxAge</span>: result.data.accessTokenExpiration * 1000 * 60,
+    });
+    <span class="c">//     بنحط refreshToken في cookie مع срок الصلاحية بتاعه</span>
+    <span class="v">res</span>.<span class="f">cookie</span>(<span class="s">"refreshToken"</span>, result.data.refreshToken, {
+      ...<span class="v">baseCookieOptions</span>,
+      <span class="v">maxAge</span>: result.data.refreshTokenExpiration * 1000 * 60,
+    });
+
+    <span class="c">// === السطر 157-160: إرجاع الـ Response ===</span>
+    <span class="k">return</span> <span class="v">res</span>.<span class="f">status</span>(<span class="n">StatusCodes.OK</span>)
+      .<span class="f">json</span>(<span class="k">new</span> <span class="v">ApiResponse</span>(result.success, result.message, result.data));
+  },
+);</pre>
+
+  <h3>شرح السطر سطر:</h3>
+
+  <table>
+    <tr><th>السطر</th><th>الشرح</th></tr>
+    <tr><td>142</td><td><code>export const refreshAccessToken</code> - بنصدر الدالة عشان نستخدمها في الـ Router. <code>asyncHandler</code> هو wrapper بيلف الدوال الـ async عشان يمسك الأخطاء ويورّيها للـ error handler بدل ما نعمل try/catch في كل دالة.</td></tr>
+    <tr><td>143</td><td>الدالة بتاخد <code>req</code> (الطلب), <code>res</code> (الرد), <code>next</code> (عشان نمرر للخطوة التالية).</td></tr>
+    <tr><td>144</td><td><code>new User()</code> - بننشيء instance من الكلاس عشان نستخدم دواله.</td></tr>
+    <tr><td>145</td><td><code>user.refreshAccessToken()</code> - بنادي الدالة في <code>User.class.ts</code>. الدالة دي <strong>مبتنفذش الحالة فورًا</strong> — هي بتجهز middleware function وترجعها. <code>refreshMiddleware</code> هو pointer جاهز للتنفيذ.</td></tr>
+    <tr><td>146</td><td><code>refreshMiddleware(req, res, next)</code> - بننفذ الـ middleware function ونديها req, res, next. جواها بيحصل التحقق والتجديد. النتيجة (result) فيها الـ tokens الجدد.</td></tr>
+    <tr><td>148-151</td><td>بنضبط cookie اسمه <code>accessToken</code> بالقيمة الجديدة، مع خيارات <code>httpOnly: true</code> (مش accessible من JavaScript)، <code>secure</code> في production، <code>sameSite</code> مناسب. <code>maxAge</code> محسوب بالمللي ثانية.</td></tr>
+    <tr><td>152-155</td><td>نفس الكلام بس للـ <code>refreshToken</code>.</td></tr>
+    <tr><td>157-159</td><td>نرجع استجابة HTTP 200 مع جسم الـ response اللي فيه <code>success: true</code>، رسالة، و بيانات التوكنات الجديدة.</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 5. CLASS METHOD ==================== -->
+<div class="section page-break" id="refresh-class">
+  <h2>5. شرح Class Method: refreshAccessToken()</h2>
+  <p>من ملف <span class="file-ref">src/classes/User.class.ts</span> — الأسطر 435 إلى 504</p>
+
+  <pre>
+<span class="c">// السطر 435: توقيع الدالة - async وبتاخد parameters عادي</span>
+<span class="k">async</span> <span class="f">refreshAccessToken</span>() {
+
+  <span class="c">// السطر 436: بترجع دالة جوه دالة (Closure)</span>
+  <span class="c">// الدالة الجوه دي بتتصرف زي Express Middleware</span>
+  <span class="k">return</span> <span class="k">async</span> (req: <span class="v">Request</span>, res: <span class="v">Response</span>, next: <span class="v">NextFunction</span>) => {
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 437-441: استخراج الـ refresh token من الـ request</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// بيجرب يجيب التوكن من:</span>
+    <span class="c">// 1. cookies (req.cookies.refreshToken)</span>
+    <span class="c">// 2. أو Authorization header (Bearer &lt;token&gt;)</span>
+    <span class="k">const</span> <span class="v">incomingRefreshToken</span> =
+      req.cookies?.refreshToken ||
+      (req.headers?.authorization?.<span class="f">startsWith</span>(<span class="s">"Bearer"</span>) &&
+        req.headers?.authorization?.<span class="f">split</span>(<span class="s">" "</span>)[<span class="n">1</span>]);
+
+    <span class="c">// السطر 442-446: لو مفيش توكن خالص → خطأ</span>
+    <span class="k">if</span> (!<span class="v">incomingRefreshToken</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(
+        <span class="s">"Refresh Token is Missing"</span>,
+        <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>,
+      );
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 448-451: التحقق من صحة JWT</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// jwt.verify بتتأكد من:</span>
+    <span class="c">// - التوقيع (signature) سليم باستخدام REFRESH_TOKEN_SECRET</span>
+    <span class="c">// - التوكن لسه صالح (مخلصش)</span>
+    <span class="c">// لو أي حاجة غلط → throw error</span>
+    <span class="k">const</span> <span class="v">payload</span> = (<span class="k">await</span> jwt.<span class="f">verify</span>(
+      <span class="v">incomingRefreshToken</span>,
+      <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!,
+    )) <span class="k">as</span> <span class="v">JwtPayload</span>;
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 453-458: البحث عن المستخدم في قاعدة البيانات</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// بنستخدم id اللي جوا الـ JWT payload عشان نلاقي user في DB</span>
+    <span class="k">const</span> <span class="v">user</span> = <span class="k">await</span> prisma.user.<span class="f">findFirst</span>({
+      <span class="k">where</span>: { id: payload.id },
+    });
+
+    <span class="c">// السطر 460-462: لو مفيش user بالـ id ده → خطأ</span>
+    <span class="k">if</span> (!<span class="v">user</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">`We Couldn't Found User`</span>, <span class="v">StatusCodes</span>.<span class="v">NOT_FOUND</span>);
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 463-468: مقارنة التوكن مع المخزن في DB</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// ده أهم سطر في الحماية: بنقارن الـ incomingRefreshToken مع</span>
+    <span class="c">// refreshToken المخزن عند المستخدم في قاعدة البيانات.</span>
+    <span class="c">// لو مش متطابقين → معناه إن التوكن اتلغى (revoked) أو اتغير</span>
+    <span class="c">// مثلاً لو حد سرق التوكن والضحية عملت refresh من قبل كده</span>
+    <span class="k">if</span> (user.refreshToken !== <span class="v">incomingRefreshToken</span>)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(
+        <span class="s">"Refresh Token is Invalid or Has Been Revoked"</span>,
+        <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>,
+      );
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 470-477: التحقق من حالة الحساب</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// لو المستخدم معمول له Ban → ممنوع يجدد التوكنات</span>
+    <span class="k">if</span> (user.isBanned)
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"Account is Banned"</span>, <span class="v">StatusCodes</span>.<span class="v">FORBIDDEN</span>);
+
+    <span class="c">// لو الحساب مقفول مؤقتًا (locked بسبب 5 محاولات فاشلة)</span>
+    <span class="k">if</span> (user.lockedUntil && user.lockedUntil > <span class="k">new</span> <span class="v">Date</span>())
+      <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(
+        <span class="s">"Account is Temporarily Locked"</span>,
+        <span class="v">StatusCodes</span>.<span class="v">FORBIDDEN</span>,
+      );
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 479-482: توليد توكنات جديدة (ROTATION)</span>
+    <span class="c">// ============================================================</span>
+    <span class="c">// بنستخدم id المستخدم كـ payload للتوكن الجديد</span>
+    <span class="k">const</span> <span class="v">tokenPayload</span> = { id: user.id };
+    <span class="k">const</span> <span class="v">newAccessToken</span> = <span class="f">generateAccessToken</span>(<span class="v">tokenPayload</span>);
+    <span class="k">const</span> <span class="v">newRefreshToken</span> = <span class="f">generateRefreshToken</span>(<span class="v">tokenPayload</span>);
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 484-492: حفظ الـ refreshToken الجديد في DB</summary>
+    <span class="c">// ============================================================</span>
+    <span class="c">// بنحدث المستخدم في قاعدة البيانات:</span>
+    <span class="c">// - نستبدل refreshToken القديم بالجديد</span>
+    <span class="c">// - كده القديم مش هيشتغل تاني لو حد حاول يستخدمه</span>
+    <span class="k">await</span> prisma.user.<span class="f">update</span>({
+      <span class="k">where</span>: { id: user.id },
+      <span class="k">data</span>: { refreshToken: <span class="v">newRefreshToken</span> },
+    });
+
+    <span class="c">// ============================================================</span>
+    <span class="c">// السطر 494-503: إرجاع النتيجة</span>
+    <span class="c">// ============================================================</span>
+    <span class="k">return</span> {
+      success: <span class="k">true</span>,
+      <span class="k">data</span>: {
+        accessToken: <span class="v">newAccessToken</span>,
+        refreshToken: <span class="v">newRefreshToken</span>,
+        accessTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_EXPIRY</span>),
+        refreshTokenExpiration: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_EXPIRY</span>),
+      },
+      message: <span class="s">"Access Token Refreshed Successfully"</span>,
+    };
+  };
+}</pre>
+
+  <h3>ليه الدالة بترجع Middleware جوه Middleware؟</h3>
+  <div class="note">
+    <p>ده نمط غير تقليدي شوية. الفكرة إن <code>refreshAccessToken()</code> في الـ <strong>Class</strong> مبتنفذش الحالة مباشرة — بترجع دالة (middleware) جاهزة عشان ننفذها بعدين. السبب: الدالة الجوهية محتاجة توصل لـ <code>req</code> (عشان تجيب الـ cookies), <code>res</code> (عالصفحات الـ cookies), <code>next</code> (للـ error handling). الـ Controller الخارجي عنده access لـ req, res, next فبيمررهم.</p>
+    <p style="margin-top:10px;">ده كان ممكن يتعمل بشكل أبسط: الـ Class method ياخد req, res, next كـ parameters مباشرة. لكن المبرمج اختار النمط ده والسبب مش واضح — ممكن كان بيفكر في reusable middleware pattern.</p>
+  </div>
+
+  <h3>جدول السطور الأهم:</h3>
+  <table>
+    <tr><th>السطر في الملف</th><th>القسم</th><th>الوظيفة</th></tr>
+    <tr><td>437-441</td><td>استخراج التوكن</td><td>يجيب الـ refresh token من الـ cookies أو Authorization header. <code>req.cookies?.refreshToken</code> — لو مفيش cookie-parser middleware (وهي مش مسجلة!)، هيدي <code>undefined</code> ويروح على الـ header. ده bug مذكور تحت.</td></tr>
+    <tr><td>448-451</td><td>jwt.verify</td><td>يتأكد من الـ signature باستخدام <strong>REFRESH_TOKEN_SECRET</strong> (مش ACCESS_TOKEN_SECRET لو استخدم غلط يبقى bug). لو التوكن منتهي أو التوقيع غلط → يحصل error.</td></tr>
+    <tr><td>464</td><td>DB comparison</td><td>يقارن الـ incoming refresh token مع اللي في قاعدة البيانات. لو غير متطابق — معناه التوكن اتلغى (مثلاً بسبب rotation سابق).</td></tr>
+    <tr><td>481-482</td><td>توليد جديد</td><td>يولد accessToken + refreshToken <strong>جدد</strong>. الـ access token بيطلع بـ ACCESS_TOKEN_SECRET (مدة قصيرة)، والـ refresh بـ REFRESH_TOKEN_SECRET (مدة أطول).</td></tr>
+    <tr><td>485-492</td><td>حفظ في DB</td><td>يخزن الـ refreshToken الجديد في قاعدة البيانات — بكده الـ القديم ملغي. لو حد سرق الـ refresh token القديم، مش هيقدر يستخدمه تاني.</td></tr>
+  </table>
+</div>
+
+<!-- ==================== 6. GENERATE TOKENS ==================== -->
+<div class="section page-break" id="generateTokens">
+  <h2>6. دوال توليد التوكنات</h2>
+  <p>من ملف <span class="file-ref">src/helpers/generateTokens.ts</span></p>
+
+  <pre>
+<span class="c">// دالة توليد الـ Access Token:</span>
+<span class="k">export const</span> <span class="f">generateAccessToken</span> = (payload: <span class="v">object</span>) => {
+  <span class="k">try</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!, {
+      <span class="v">expiresIn</span>: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_EXPIRY</span>),  <span class="c">// 86400000 ms = 24 ساعة</span>
+    });
+  } <span class="k">catch</span> (error) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"Error generating access token"</span>, <span class="n">500</span>);
+  }
+};
+
+<span class="c">// دالة توليد الـ Refresh Token:</span>
+<span class="k">export const</span> <span class="f">generateRefreshToken</span> = (payload: <span class="v">object</span>) => {
+  <span class="k">try</span> {
+    <span class="k">return</span> jwt.<span class="f">sign</span>(payload, <span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_SECRET</span>!, {
+      <span class="v">expiresIn</span>: <span class="v">Number</span>(<span class="v">ENV</span>.<span class="v">REFRESH_TOKEN_EXPIRY</span>), <span class="c">// 604800000 ms = 7 أيام</span>
+    });
+  } <span class="k">catch</span> (error) {
+    <span class="k">throw</span> <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"Error generating refresh token"</span>, <span class="n">500</span>);
+  }
+};</pre>
+
+  <h3>الفرق بين Access Token و Refresh Token:</h3>
+  <table>
+    <tr><th>الخاصية</th><th>Access Token</th><th>Refresh Token</th></tr>
+    <tr><td>الغرض</td><td>توثيق كل طلب API</td><td>توليد access tokens جديدة</td></tr>
+    <tr><td>السر المستخدم</td><td>ACCESS_TOKEN_SECRET</td><td>REFRESH_TOKEN_SECRET</td></tr>
+    <tr><td>مدة الصلاحية (من .env)</td><td>86,400,000 ms ← 24 ساعة</td><td>604,800,000 ms ← 7 أيام</td></tr>
+    <tr><td>التخزين</td><td>Cookie (httpOnly) + يمكن إرساله في Header</td><td>Cookie (httpOnly) + DB (refreshToken)</td></tr>
+    <tr><td>التدوير (Rotation)</td><td>يتجدد كل ما الـ refresh يحصل</td><td>يتجدد كل ما نستخدمه — القديم يُلغى</td></tr>
+    <tr><td>هل ممكن نلغيه؟</td><td>لا — stateless JWT</td><td>نعم — بحذفه من DB أو تغييره</td></tr>
+  </table>
+
+  <div class="warn">
+    <strong>⚠️ مشكلة:</strong> مدة الـ Access Token هنا 24 ساعة بدل 15 دقيقة اللي في التوثيق (system-design.md). طول المدة ده خطر أمني — لو اتسرق الـ access token، المهاجم يقدر يستخدمه 24 ساعة كاملة. الأحسن نخليها 15-30 دقيقة.
+  </div>
+</div>
+
+<!-- ==================== 7. MIDDLEWARE ==================== -->
+<div class="section page-break" id="middleware">
+  <h2>7. الـ Middleware: isAuthenticated</h2>
+  <p>من ملف <span class="file-ref">src/middlewares/isAuthenticated.ts</span></p>
+
+<pre>
+<span class="k">export const</span> <span class="f">isAuthenticated</span> = <span class="k">async</span> (
+  req: <span class="v">any</span>,
+  res: <span class="v">Response</span>,
+  next: <span class="v">NextFunction</span>,
+) => {
+  <span class="k">try</span> {
+    <span class="c">// السطر 13-16: جلب الـ access token من cookie أو header</span>
+    <span class="k">const</span> <span class="v">id</span> =
+      req.cookies?.accessToken ||
+      (req.headers?.authorization?.<span class="f">startsWith</span>(<span class="s">"Bearer"</span>) &&
+        req.headers.authorization.<span class="f">split</span>(<span class="s">" "</span>)[<span class="n">1</span>]);
+
+    <span class="c">// السطر 18-22: لو مفيش توكن → UNAUTHORIZED</span>
+    <span class="k">if</span> (!<span class="v">id</span>) {
+      <span class="k">return</span> <span class="v">next</span>(
+        <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"User not authenticated"</span>, <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>),
+      );
+    }
+
+    <span class="c">// السطر 24-28: التحقق من JWT ووضع البيانات في req.user</span>
+    <span class="k">if</span> (<span class="v">id</span>) {
+      <span class="k">const</span> <span class="v">user</span> = jwt.<span class="f">verify</span>(<span class="v">id</span>, <span class="v">ENV</span>.<span class="v">ACCESS_TOKEN_SECRET</span>!);
+      req.user = <span class="v">user</span>;  <span class="c">// الـ controllers اللي بعد كده يقدر يوصل لـ req.user.id</span>
+      <span class="k">return</span> <span class="v">next</span>();    <span class="c">// خلّي الطلب يكمل للـ controller</span>
+    }
+  } <span class="k">catch</span> (error) {
+    <span class="c">// لو حصل أي خطأ (توكن منتهي، توقيع غلط، إلخ)</span>
+    <span class="k">return</span> <span class="v">next</span>(
+      <span class="k">new</span> <span class="v">ApiError</span>(<span class="s">"User not authenticated"</span>, <span class="v">StatusCodes</span>.<span class="v">UNAUTHORIZED</span>),
+    );
+  }
+};</pre>
+
+  <h3>ازاي الـ Middleware بيشتغل مع الـ Refresh Token Route؟</h3>
+  <p>ملاحظة مهمة: في ملف <span class="file-ref">src/routers/user.router.ts</span>، route الـ refreshAccessToken <strong>عليه isAuthenticated middleware</strong>. يعنى:</p>
+  <div class="flow-diagram">
+    <div class="flow-step">POST /refresh-accessToken</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step highlight">isAuthenticated middleware<br>(يتأكد من صحة access token)</div>
+    <div class="flow-arrow">⬇</div>
+    <div class="flow-step">refreshAccessToken controller<br>(يستقبل الـ refresh token من الـ cookies)</div>
+  </div>
+
+  <div class="note">
+    <strong>🤔 هل ده منطقي؟</strong><br>
+    الدخول على route تجديد التوكنات محتاج access token سليم؟ فيه جدل:<br>
+    <strong>مع</strong>: يضمن إن المستخدم كان مسجل دخول أصلاً.<br>
+    <strong>ضد</strong>: لو الـ access token خلص، مش هتقدر تجدد أصلاً!<br>
+    الحل الأفضل: يبقى route بدون auth middleware، ويعتمد بس على الـ refresh token في الـ cookie.
+  </div>
+</div>
+
+<!-- ==================== 8. SECURITY ==================== -->
+<div class="section page-break" id="security">
+  <h2>8. الاعتبارات الأمنية والمشاكل</h2>
+
+  <div class="warn">
+    <strong>🐛 مشكلة #1: cookie-parser مش مسجل</strong><br>
+    في <code>server.ts</code>، مفيش <code>app.use(cookieParser())</code>. ببساطة <code>req.cookies</code> هيكون <code>undefined</code>. يعنى محاولة قراءة <code>req.cookies?.refreshToken</code> هتدي <code>undefined</code>. الحل لازم الكود يشتغل بالـ Authorization header بدل الـ cookies، أو نضيف <code>cookie-parser</code> middleware.
+  </div>
+
+  <div class="warn">
+    <strong>🐛 مشكلة #2: استخراج التوكن من header في دوال مختلفة</strong><br>
+    دوال refreshAccessToken, logout, verifyRegisterOtp كلها بتجيب التوكن من <code>req.cookies?.accessToken || req.headers?.authorization?.startsWith("Bearer")</code>. لو المستخدم بعت الـ refresh token في الـ header (بدل الـ cookies)، الكود هيقراها كـ access token مش refresh token — ده خلط بينهم.
+  </div>
+
+  <div class="warn">
+    <strong>🐛 مشكلة #3: الدالة refreshAccessToken بتستخدم await مع jwt.verify</strong><br>
+    <code>await jwt.verify(...)</code> — <code>jwt.verify</code> مش async أصلاً، هو synchronous callback-based. الـ await مش هيضر لكن مش ضروري وبيضلل.
+  </div>
+
+  <div class="tip">
+    <strong>✅ اللي معمول صح:</strong><br>
+    - استخدام سرين مختلفين للـ access والـ refresh<br>
+    - مقارنة الـ refresh token مع اللي في قاعدة البيانات (revocation support)<br>
+    - تدوير (rotation) التوكنات — الـ refresh القديم بينلغى<br>
+    - التحقق من ban و lock قبل تجديد التوكنات<br>
+    - httpOnly cookies تمنع XSS من سرقة التوكنات
+  </div>
+
+  <h3>الخلاصة: تدفق الـ Refresh Token خطوة بخطوة</h3>
+  <ol>
+    <li><strong>العميل عنده access token قديم خلص</strong> — بيعمل request لـ <code>POST /refresh-accessToken</code> وفي الـ cookies عنده refreshToken.</li>
+    <li><strong>isAuthenticated middleware</strong> — يحاول يتحقق من الـ access token القديم (الموجود في الـ cookies). لو مش موجود أو منتهي → UNAUTHORIZED. <em>(ده ممكن يكون مشكلة لو العميل مش بعت access token قديم).</em></li>
+    <li><strong>الـ Controller:</strong> <code>new User().refreshAccessToken()</code> ← ترجع middleware function.</li>
+    <li><strong>تنفيذ الـ middleware:</strong> ياخد الـ refresh token من الـ cookies أو الـ Authorization header.</li>
+    <li><strong>jwt.verify:</strong> يتحقق من صحة الـ JWT signature باستخدام REFRESH_TOKEN_SECRET.</li>
+    <li><strong>يجيب المستخدم من DB</strong> باستخدام id الموجود في الـ JWT payload.</li>
+    <li><strong>يقارن الـ refresh tokens:</strong> الجاي من الـ request مع المخزن في DB. لو مش متطابقين → التوكن ملغي أو مسروق.</li>
+    <li><strong>يتأكد من حالة الحساب:</strong> مش banned, مش locked.</li>
+    <li><strong>يولد توكنات جديدة:</strong> accessToken (24 ساعة) + refreshToken (7 أيام).</li>
+    <li><strong>يحفظ الـ refreshToken الجديد</strong> في قاعدة البيانات — بكده القديم ملغي.</li>
+    <li><strong>الـ Controller يضبط الـ cookies</strong> بالتوكنات الجديدة ويرد للعميل.</li>
+    <li><strong>العميل يستخدم الـ access token الجديد</strong> للطلبات الجاية.</li>
+  </ol>
+
+  <div class="tip">
+    <strong>📌 نصيحة للتحسين:</strong><br>
+    1. أضف <code>cookie-parser</code> middleware في server.ts.<br>
+    2. مدّة الـ access token 15-30 دقيقة أفضل من 24 ساعة.<br>
+    3. route الـ refreshAccessToken مفروض مايكونش عليه isAuthenticated middleware (أو على الأقل ما يتطلبش access token صحيح).<br>
+    4. استخدم <code>jwt.verify</code> callback بدل الـ await الزايد.<br>
+    5. استخدم <code>req.cookies</code> فقط للـ refresh token والـ Authorization header للـ access token — ما تخلطش بينهم.
+  </div>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>
