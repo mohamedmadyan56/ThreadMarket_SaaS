@@ -38,6 +38,11 @@ class AuthModel {
     data,
   });
 }
-
+async updatrAfterLogin(userId:string,refreshToken:string){
+  return prisma.user.update({
+    where:{id:userId},
+    data:{failedLoginAttempts:0,lockedUntil: null,isOnline:true,refreshToken}
+  })
+}
 
 }
