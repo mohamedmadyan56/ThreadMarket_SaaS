@@ -19,4 +19,25 @@ class AuthModel {
   async findByEmail(email:string){
     return prisma.user.findFirst({where:{email}})
   }
+
+
+  async findUserByIdentifier(identifier:string){
+    return prisma.user.findFirst({
+      where:{OR:[{email:identifier},{phone:identifier}]}
+    })
+  }
+ async createUser(data: {
+  username: string;
+  email: string;
+  password: string;
+  picture_url?: string;
+  picture_url_id?: string;
+  isVerified?: boolean;
+}) {
+  return prisma.user.create({
+    data,
+  });
+}
+
+
 }
