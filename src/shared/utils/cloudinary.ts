@@ -50,9 +50,20 @@ export const uploadBufferToCloudinary = async (
 
 
 export const deleteFromCloudinary = async (
-  public_Id: string,
-  resource_type: string = "image",
-) => {
-  const result = await cloudinary.uploader.destroy(public_Id, { resource_type });
-  return result;
+  publicId: string,
+  resource_type: ResourceType = "image",
+): Promise<{ result: string }> => {
+  if (!publicId) {
+    throw new AppError("publicId is required", 400);
+  }
+
+  try {
+    const result = await cloudinary.uploader.destroy(publicId, { resource_type });
+    return result;
+  } catch (error: any) {
+    throw new AppError(
+      error?.message || "Cloudinary delete failed",
+      500
+    );
+  }
 };
