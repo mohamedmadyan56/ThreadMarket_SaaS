@@ -1,30 +1,39 @@
-import { v2 as cloudinary,UploadApiResponse } from "cloudinary";
-import { ENV } from "../../config/env";
+import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
+import { ENV } from "@config/env";
+import AppError from "@errors/AppError";
 import path from "path";
-import { resolve } from "dns";
-import { rejects } from "assert";
+
+type ResourceType = "image" | "video" | "raw" | "auto";
 
 cloudinary.config({
   cloud_name: ENV.CLOUDINARY_NAME,
-  api_key: ENV.CLOUDINARY_API_KEY,
+  api_key:    ENV.CLOUDINARY_API_KEY,
   api_secret: ENV.CLOUDINARY_API_SECRET,
 });
 
-export const uploadToCloudinary = async (filePath: string, folder: string):Promise<UploadApiResponse> => {
+// Upload from file path
+export const uploadToCloudinary = async (
+  filePath: string,
+  folder: string
+): Promise<UploadApiResponse> => {
+  if (!filePath) {
+    throw new AppError("File path is required", 400);
+  }
 
-    if(!filePath){
-        throw new AppError("File path is required",400);
-    }
+  const filePathResolved = path.resolve(filePath);
 
-    const filePathResolved = path.resolve(filePath);
-    try {
-         const result = await cloudinary.uploader.upload(filePathResolved, { folder });
-  return result;
-    }catch(error:any){
-        throw new AppError(      error?.message || "Cloudinary upload failed",500)
-    }
+  try {
+    const result = await cloudinary.uploader.upload(filePathResolved, { folder });
+    return result;
+  } catch (error: any) {
+    throw new AppError(
+      error?.message || "Cloudinary upload failed",
+      500
+    );
+  }
 };
 
+// Upload from Buffer (MemoryStorage)
 export const uploadBufferToCloudinary = async (
   buffer: Buffer,
   folder: string
@@ -44,11 +53,7 @@ export const uploadBufferToCloudinary = async (
   });
 };
 
-
-
-
-
-
+// Delete
 export const deleteFromCloudinary = async (
   publicId: string,
   resource_type: ResourceType = "image",
