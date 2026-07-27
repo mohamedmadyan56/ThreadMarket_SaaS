@@ -20,6 +20,8 @@ verifyAccessToken(token: string) {
   return jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!);
 }
 
-
+verifyRefreshToken(token: string) {
+  return jwt.verify(token, ENV.REFRESH_TOKEN_SECRET!);
+}
 
 }
