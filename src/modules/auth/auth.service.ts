@@ -51,7 +51,9 @@ class AuthService {
       ENV.ACCESS_TOKEN_SECRET!,
       { expiresIn: otpUtil.otp_expiration_minutes * 60 * 1000 });
 
-    return { Token: token, expiration: otpUtil.otp_expiration_minutes };
+    return 
+    { Token: token,
+       expiration: otpUtil.otp_expiration_minutes };
   }
 
   async verifyRegisterOtp(token: string, otp: string) {
@@ -76,4 +78,56 @@ class AuthService {
       username: payload.username, email: payload.email,
       password: payload.password, picture_url: payload.picture?.url,
       picture_url_id: payload.picture?.id, isVerified: true });
-  } }
+  } 
+
+
+  async login(identifier: string, password: string) {
+    const user = await authModel.findUserByIdentifier(identifier);
+    if (!user) throw new AppError("Invalid credentials", 401);
+
+    if (user.lockedUntil && user.lockedUntil > new Date())
+      throw new AppError("Account is locked", 403);
+    if (user.isBanned)
+      throw new AppError("Account is banned", 403);
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      await authModel.incrementFailedAttempts(user.id);
+      throw new AppError("Invalid credentials", 401);
+    }
+
+    const accessToken = tokenService.generateAccessToken({ id: user.id });
+    const refreshToken = tokenService.generateRefreshToken({ id: user.id });
+    await authModel.updateAfterLogin(user.id, refreshToken);
+
+    return {
+      accessToken, refreshToken,
+      accessTokenExpiration: Number(ENV.ACCESS_TOKEN_EXPIRY),
+      refreshTokenExpiration: Number(ENV.REFRESH_TOKEN_EXPIRY),
+      user: { id: user.id, username: user.username, phone: user.phone, email: user.email, role: user.role, picture_url: user.picture_url },
+    };
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
