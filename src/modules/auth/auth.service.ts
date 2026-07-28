@@ -51,9 +51,7 @@ class AuthService {
       ENV.ACCESS_TOKEN_SECRET!,
       { expiresIn: otpUtil.otp_expiration_minutes * 60 * 1000 });
 
-    return 
-    { Token: token,
-       expiration: otpUtil.otp_expiration_minutes };
+    return { Token: token, expiration: otpUtil.otp_expiration_minutes };
   }
 
   async verifyRegisterOtp(token: string, otp: string) {
@@ -78,8 +76,7 @@ class AuthService {
       username: payload.username, email: payload.email,
       password: payload.password, picture_url: payload.picture?.url,
       picture_url_id: payload.picture?.id, isVerified: true });
-  } 
-
+  }
 
   async login(identifier: string, password: string) {
     const user = await authModel.findUserByIdentifier(identifier);
@@ -108,25 +105,68 @@ class AuthService {
     };
   }
 
-  async logout(refreshToken:string |undefined , accessToken:string |undefined){
+  async logout(refreshToken: string | undefined, accessToken: string | undefined) {
     const token = accessToken || refreshToken;
-    if(!token) throw new AppError("No token",401);
-    try{
-      const payload = jwt.verify(token,ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
-            await authModel.setOffline(payload.id);
-
-    } catch{
-      throw new AppError("Invalid Token",401)
-    }
+    if (!token) throw new AppError("No token", 401);
+    try {
+      const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+      await authModel.setOffline(payload.id);
+    } catch { throw new AppError("Invalid token", 401); }
   }
 
-async sendOtp(email:string,purpose:string){
+  async sendOtp(email: string, purpose: string) {
+    if (purpose !== "resetpassword" && purpose !== "signup")
+      throw new AppError("Invalid purpose", 400);
 
-}
+    const user = await authModel.findByEmail(email);
+    if (!user) throw new AppError("User not found", 404);
 
+    const otpUtil = new Otp(5);
+    const generatedOtp = otpUtil.generateOtp();
+    await sendEmail(email, "OTP Verification",
+      otpEmailTemplate({ name: user.username, otp: generatedOtp, expiresInMinutes: otpUtil.otp_expiration_minutes, appName: "Fashion Connect", supportEmail: "example@gmail.com" }));
 
+    const token = jwt.sign(
+      { id: user.id, purpose: "reset-password" }, ENV.ACCESS_TOKEN_SECRET!,
+      { expiresIn: otpUtil.otp_expiration_minutes * 60 * 1000 });
+    await authModel.updateOtp(user.id, generatedOtp, otpUtil.otp_expiration_date, purpose);
+    return { Token: token, expiration: otpUtil.otp_expiration_minutes };
+  }
 
-async refreshAccessToken(incomingRefreshToken: string) {
+  async verifyOtp(token: string, otp: string) {
+    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+    if (payload?.purpose !== "reset-password")
+      throw new AppError("Invalid session", 400);
+
+    const user = await authModel.findById(payload.id);
+    if (!user) throw new AppError("User not found", 404);
+
+    if (new Date() > user.otp_expiration!)
+      throw new AppError("OTP expired", 400);
+    if (user.otp !== otp)
+      throw new AppError("Invalid OTP", 400);
+
+    await authModel.clearOtp(user.id);
+    const verifyToken = jwt.sign(
+      { id: user.id, purpose: "verify-otp" }, ENV.ACCESS_TOKEN_SECRET!,
+      { expiresIn: 5 * 60 });
+    return { Token: verifyToken, expiration: 5 };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+    if (payload?.purpose !== "verify-otp")
+      throw new AppError("Invalid session", 400);
+
+    const user = await authModel.findById(payload.id);
+    if (!user) throw new AppError("User not found", 404);
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    await authModel.updatePassword(user.id, hashedPassword);
+  }
+
+  async refreshAccessToken(incomingRefreshToken: string) {
     const payload = tokenService.verifyRefreshToken(incomingRefreshToken) as JwtPayload;
 
     const user = await authModel.findById(payload.id);
@@ -149,90 +189,6 @@ async refreshAccessToken(incomingRefreshToken: string) {
       refreshTokenExpiration: Number(ENV.REFRESH_TOKEN_EXPIRY),
     };
   }
-
-
-
-
-
-
-
- async verifyOtp(token: string, otp: string) {
-    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
-    if (payload?.purpose !== "reset-password")
-      throw new AppError("Invalid session", 400);
-
-    const user = await authModel.findById(payload.id);
-    if (!user) throw new AppError("User not found", 404);
-
-    if (new Date() > user.otp_expiration!)
-      throw new AppError("OTP expired", 400);
-    if (user.otp !== otp)
-      throw new AppError("Invalid OTP", 400);
-
-    await authModel.clearOtp(user.id);
-    const verifyToken = jwt.sign(
-      { id: user.id, purpose: "verify-otp" }, ENV.ACCESS_TOKEN_SECRET!,
-      { expiresIn: 5 * 60 });
-    return { Token: verifyToken, expiration: 5 };
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  async resetPassword(token:string,newPassword:string){
-    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
+
 export const authService = new AuthService();
