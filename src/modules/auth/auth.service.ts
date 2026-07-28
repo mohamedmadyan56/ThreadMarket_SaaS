@@ -114,6 +114,34 @@ class AuthService {
 
 
 
+async refreshAccessToken(incomingRefreshToken: string) {
+    const payload = tokenService.verifyRefreshToken(incomingRefreshToken) as JwtPayload;
+
+    const user = await authModel.findById(payload.id);
+    if (!user) throw new AppError("User not found", 404);
+
+    if (user.refreshToken !== incomingRefreshToken)
+      throw new AppError("Refresh token revoked", 401);
+    if (user.isBanned)
+      throw new AppError("Account banned", 403);
+    if (user.lockedUntil && user.lockedUntil > new Date())
+      throw new AppError("Account locked", 403);
+
+    const newAccessToken = tokenService.generateAccessToken({ id: user.id });
+    const newRefreshToken = tokenService.generateRefreshToken({ id: user.id });
+    await authModel.updateRefreshToken(user.id, newRefreshToken);
+
+    return {
+      accessToken: newAccessToken, refreshToken: newRefreshToken,
+      accessTokenExpiration: Number(ENV.ACCESS_TOKEN_EXPIRY),
+      refreshTokenExpiration: Number(ENV.REFRESH_TOKEN_EXPIRY),
+    };
+  }
+
+
+
+
+
 
 
 
@@ -131,3 +159,4 @@ class AuthService {
 
 
 }
+export const authService = new AuthService();
