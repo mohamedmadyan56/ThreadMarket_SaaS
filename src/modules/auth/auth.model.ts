@@ -83,4 +83,14 @@ async updatrAfterLogin(userId:string,refreshToken:string){
     })
   }
 
+  async setOffline(userId:string){
+    return prisma.user.update({
+      where:{id:userId},
+      data:{
+        refreshToken:null,
+        isOnline:false
+      },
+    })
+  }
+
 }
