@@ -65,4 +65,12 @@ async updatrAfterLogin(userId:string,refreshToken:string){
   }
 
 
+    async clearOtp(userId: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { otp: null, otp_expiration: null, otp_purpose: null },
+    });
+  }
+
+
 }
