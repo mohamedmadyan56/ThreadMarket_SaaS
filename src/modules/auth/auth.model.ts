@@ -73,4 +73,14 @@ async updatrAfterLogin(userId:string,refreshToken:string){
   }
 
 
+  async updatePassword(userId:string,hashedPassword:string){
+    return prisma.user.update({
+      where:{id:userId},
+      data:{
+        password:hashedPassword,
+        passwordChangedAt:new Date()
+      }
+    })
+  }
+
 }
