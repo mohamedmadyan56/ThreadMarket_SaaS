@@ -1,27 +1,79 @@
-import jwt from "jsonwebtoken"
+import bcrypt from "bcryptjs";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { ENV } from "../../config/env";
+import { authModel } from "./auth.model";
+import { tokenService } from "./token.service";
+import { sendEmail } from "../../shared/utils/email";
+import { otpEmailTemplate } from "../../shared/utils/emailTemplates";
+import { uploadToCloudinary } from "../../shared/utils/cloudinary";
+import { removeFileFromDisk } from "../../shared/utils/upload";
+import Otp from "../../shared/utils/otp";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
 
-class TokenService {
- public generateAccessToken(payload:object):string{
-    return jwt.sign(payload,ENV.ACCESS_TOKEN_SECRET!,{
-        expiresIn:Number(ENV.ACCESS_TOKEN_EXPIRY),
-    })
- }
- 
- 
-public generateRefreshToken(payload: object): string {
-  return jwt.sign(payload, ENV.REFRESH_TOKEN_SECRET!, {
-    expiresIn: Number(ENV.REFRESH_TOKEN_EXPIRY),
-  });
-}
+class AuthService {
 
+  async register(username: string, email: string, password: string, filePath?: string) {
+    const existingUser = await authModel.findByEmail(email);
+    if (existingUser) {
+      throw new AppError(`User with email ${email} already exists`, 409);
+    }
 
-verifyAccessToken(token: string) {
-  return jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!);
-}
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-verifyRefreshToken(token: string) {
-  return jwt.verify(token, ENV.REFRESH_TOKEN_SECRET!);
-}
+    let picture: { url: string; id: string } | undefined;
+    if (filePath) {
+      try {
+        const result = await uploadToCloudinary(filePath, "users");
+        picture = { url: result.secure_url, id: result.public_id };
+      } finally { removeFileFromDisk(filePath); }
+    }
 
-}
+    const otpUtil = new Otp(5);
+    const generatedOtp = otpUtil.generateOtp();
+    const otpSalt = await bcrypt.genSalt(10);
+    const hashedOtp = await bcrypt.hash(generatedOtp, otpSalt);
+
+    try {
+      await sendEmail(email, "Sign up Verification",
+        otpEmailTemplate({ name: username, otp: generatedOtp, expiresInMinutes: otpUtil.otp_expiration_minutes, appName: "Fashion Connect", supportEmail: "example@gmail.com" }));
+    } catch (error) {
+      if (picture?.id) {
+        const { deleteFromCloudinary } = await import("../../shared/utils/cloudinary");
+        await deleteFromCloudinary(picture.id);
+      }
+      throw error;
+    }
+
+    const token = jwt.sign(
+      { purpose: "signup-pending", username, email, password: hashedPassword, picture, otpHash: hashedOtp },
+      ENV.ACCESS_TOKEN_SECRET!,
+      { expiresIn: otpUtil.otp_expiration_minutes * 60 * 1000 });
+
+    return { Token: token, expiration: otpUtil.otp_expiration_minutes };
+  }
+
+  async verifyRegisterOtp(token: string, otp: string) {
+    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+    if (payload?.purpose !== "signup-pending")
+      throw new AppError("Invalid Registration Session", 400);
+
+    const otpMatches = await bcrypt.compare(otp, payload.otpHash!);
+    if (!otpMatches)
+      throw new AppError("OTP does not match", 400);
+
+    const existingUser = await authModel.findByEmail(payload.email);
+    if (existingUser) {
+      if (payload.picture?.id) {
+        const { deleteFromCloudinary } = await import("../../shared/utils/cloudinary");
+        await deleteFromCloudinary(payload.picture.id);
+      }
+      throw new AppError("Email already exists", 409);
+    }
+
+    await authModel.createUser({
+      username: payload.username, email: payload.email,
+      password: payload.password, picture_url: payload.picture?.url,
+      picture_url_id: payload.picture?.id, isVerified: true });
+  } }
