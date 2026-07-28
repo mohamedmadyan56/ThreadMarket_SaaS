@@ -67,7 +67,7 @@ model User {
   brandDocumentId     String?         @db.Uuid
   brandFollowers      BrandFollower[]
   reviews             Review[]
-  wishlistUserId      String          @db.Uuid
+  wishlistUserId      String?         @db.Uuid
 }
 
 enum BrandVerificationTier {
@@ -126,7 +126,7 @@ model Brand {
   @@map("brands")
 }
 
-enum BrandDocType{
+enum BrandDocType {
   trademark_certificate
   business_registration
   representative_id
