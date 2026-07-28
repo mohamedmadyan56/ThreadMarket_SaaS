@@ -57,7 +57,12 @@ async updatrAfterLogin(userId:string,refreshToken:string){
     return prisma.user.update({ where: { id: userId }, data: updateData });
   }
 
-
+  async updateOtp(userId:string,otp:string,expiration:Date,purpose:string){
+    return prisma.user.update({
+      where:{id:userId},
+      data:{otp,otp_expiration:expiration,otp_purpose: purpose as any},
+    })
+  }
 
 
 }
