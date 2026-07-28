@@ -45,4 +45,19 @@ async updatrAfterLogin(userId:string,refreshToken:string){
   })
 }
 
+
+  async incrementFailedAttempts(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return;
+    const failedAttempts = user.failedLoginAttempts + 1;
+    const updateData: any = { failedLoginAttempts };
+    if (failedAttempts >= 5) {
+      updateData.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+    }
+    return prisma.user.update({ where: { id: userId }, data: updateData });
+  }
+
+
+
+
 }
