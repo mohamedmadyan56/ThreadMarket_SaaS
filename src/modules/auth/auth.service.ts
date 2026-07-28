@@ -108,7 +108,17 @@ class AuthService {
     };
   }
 
+  async logout(refreshToken:string |undefined , accessToken:string |undefined){
+    const token = accessToken || refreshToken;
+    if(!token) throw new AppError("No token",401);
+    try{
+      const payload = jwt.verify(token,ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+            await authModel.setOffline(payload.id);
 
+    } catch{
+      throw new AppError("Invalid Token",401)
+    }
+  }
 
 
 
@@ -143,6 +153,70 @@ async refreshAccessToken(incomingRefreshToken: string) {
 
 
 
+
+
+  async verifyOtp(token:string,otp:string){
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  async resetPassword(token:string,newPassword:string){
+    const payload = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  }
 
 
 
