@@ -4,7 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../../shared/utils/asyncHandler";
 import AppError from "../../shared/errors/AppError";
 
-export const brandVerificationStatus = asyncHandler(async (req, res) => {
+export const brandVerificationStatus = asyncHandler(async (req: Request, res: Response) => {
     const { brandId } = req.params as { brandId: string };
     const user = (req as any).user;
 

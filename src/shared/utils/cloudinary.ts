@@ -1,6 +1,6 @@
 import { v2 as cloudinary, UploadApiResponse } from "cloudinary";
-import { ENV } from "@config/env";
-import AppError from "@errors/AppError";
+import { ENV } from "../../config/env";
+import AppError from "../errors/AppError";
 import path from "path";
 
 type ResourceType = "image" | "video" | "raw" | "auto";

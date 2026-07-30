@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { validate } from "../../shared/middleware/validate";
-import { authenticate } from "../../shared/middleware/authenticate";
+import authenticate from "../../shared/middleware/authenticate";
 import { brandVerificationStatus } from "./brand.controller";
 import { brandVerificationStatusSchema } from "./brand.validators";
 

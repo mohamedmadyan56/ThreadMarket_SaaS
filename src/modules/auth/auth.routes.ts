@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { validate } from "../../shared/middleware/validate";
-import { authenticate } from "../../shared/middleware/authenticate";
+import authenticate from "../../shared/middleware/authenticate";
 import { upload } from "../../shared/utils/upload";
 import { login, register, verifyRegisterOtp, logout, sendOtp, verifyOtp, resetPassword, refreshAccessToken } from "./auth.controller";
 import { loginSchema, registerSchema, otpSchema, forgetPasswordSchema, resetPasswordSchema } from "./auth.validators";

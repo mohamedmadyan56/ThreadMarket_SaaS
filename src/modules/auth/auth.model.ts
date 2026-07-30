@@ -46,7 +46,7 @@ class AuthModel {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
     const failedAttempts = user.failedLoginAttempts + 1;
-    const updateData: any = { failedLoginAttempts };
+    const updateData: any = { failedLoginAttempts: failedAttempts };
     if (failedAttempts >= 5) {
       updateData.lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
     }
