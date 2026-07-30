@@ -92,3 +92,17 @@ export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
         data: result,
     });
 })
+
+
+
+export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+    const { token, otp } = req.body;
+
+    const result = await authService.verifyOtp(token, otp);
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "OTP verified successfully",
+        data: result,
+    });
+})
