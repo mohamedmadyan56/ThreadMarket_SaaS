@@ -66,3 +66,16 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     })
 })
 
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.refreshToken;
+    const accessToken = req.headers.authorization?.split(" ")[1];
+
+    await authService.logout(refreshToken, accessToken);
+
+    res.clearCookie("refreshToken", baseCookieOptions);
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Logged out successfully",
+    });
+})
