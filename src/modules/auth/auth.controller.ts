@@ -31,7 +31,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
 })
 
-
+export const verifyRegisterOtp = asyncHandler(async (req: Request, res: Response) => {
+    const { token, otp } = req.body;
+    await authService.verifyRegisterOtp(token, otp);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Email verified successfully. You can now login.",
+    });
+})
 
 
 

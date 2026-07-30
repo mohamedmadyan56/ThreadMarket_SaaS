@@ -123,43 +123,122 @@ const baseCookieOptions = {
 <p>الـ Controller هو طبقة التنسيق (Orchestration Layer) — بياخد البيانات من <code>req</code>، ينادي الـ Service، ويرجع الـ Response مع إدارة الـ Cookies.</p>
 
 <div class="note">
-    <strong>مبدأ مهم:</strong> الـ Controller مافيهوش бизнес logic خالص — كل logic في الـ Service. الـ Controller بس بيحول HTTP Request لـ Service Call ويرجع HTTP Response.
+    <strong>مبدأ مهم:</strong> الـ Controller مافيهوش business logic خالص — كل logic في الـ Service. الـ Controller بس بيحول HTTP Request لـ Service Call ويرجع HTTP Response.
 </div>
 
-<h3>جدول دوال الـ Controller:</h3>
-<table>
-    <tr>
-        <th>الدالة</th>
-        <th>الـ Route</th>
-        <th>مصدر البيانات</th>
-        <th>الـ Cookies</th>
-        <th>الوصف</th>
-    </tr>
-    <tr>
-        <td><code>register</code></td>
-        <td>POST /auth/register</td>
-        <td>body + multer file</td>
-        <td>—</td>
-        <td>ترجع OTP token للتأكيد</td>
-    </tr>
-    <tr>
-        <td><code>verifyRegisterOtp</code></td>
-        <td>POST /auth/verify-register-otp</td>
-        <td>body (token + otp)</td>
-        <td>—</td>
-        <td>تأكيد OTP التسجيل</td>
-    </tr>
-    <tr>
-        <td><code>login</code></td>
-        <td>POST /auth/login</td>
-        <td>body (identifier + password)</td>
-        <td>set refreshToken</td>
-        <td>يرجع accessToken + user data</td>
-    </tr>
-    <tr>
-        <td><code>logout</code></td>
-        <td>POST /auth/logout</td>
-        <td>cookies + headers</td>
-        <td>clear refreshToken</td>
-        <td>يسجل خروج ويمسح الكوكي</td>
-    </tr>
+<pre>import { Request, Response } from &quot;express&quot;
+import { authService } from &quot;./auth.service&quot;
+import { StatusCodes } from &quot;http-status-codes&quot;;
+import { asyncHandler } from &quot;../../shared/utils/asyncHandler&quot;;
+import AppError from &quot;../../shared/errors/AppError&quot;;
+import { ENV } from &quot;../../config/env&quot;;
+
+const isProduction = ENV.NODE_ENV === &apos;production&apos;;
+
+const baseCookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? &quot;none&quot; : &quot;lax&quot; as &quot;none&quot; | &quot;lax&quot;,
+    path: &quot;/&quot;,
+}
+
+export const register = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { username, email, password } = req.body;
+    const filePath = req.file?.path;
+    const result = await authService.register(username, email, password, filePath);
+    res.status(StatusCodes.CREATED).json({
+        success: true,
+        message: &quot;OTP sent to email. Please verify to complete registration.&quot;,
+        data: result,
+    });
+})
+
+export const verifyRegisterOtp = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { token, otp } = req.body;
+    await authService.verifyRegisterOtp(token, otp);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;Email verified successfully. You can now login.&quot;,
+    });
+})
+
+export const login = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { identifier, password } = req.body;
+    const result = await authService.login(identifier, password);
+    res.cookie(&quot;refreshToken&quot;, result.refreshToken, {
+        ...baseCookieOptions,
+        maxAge: Number(ENV.REFRESH_TOKEN_EXPIRY) * 1000,
+    });
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;Login successful&quot;,
+        data: {
+            accessToken: result.accessToken,
+            accessTokenExpiration: result.accessTokenExpiration,
+            user: result.user,
+        },
+    });
+})
+
+export const logout = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const refreshToken = req.cookies?.refreshToken;
+    const accessToken = req.headers.authorization?.split(&quot; &quot;)[1];
+    await authService.logout(refreshToken, accessToken);
+    res.clearCookie(&quot;refreshToken&quot;, baseCookieOptions);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;Logged out successfully&quot;,
+    });
+})
+
+export const sendOtp = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { email, purpose } = req.body;
+    const result = await authService.sendOtp(email, purpose);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;OTP sent to email&quot;,
+        data: result,
+    });
+})
+
+export const verifyOtp = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { token, otp } = req.body;
+    const result = await authService.verifyOtp(token, otp);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;OTP verified successfully&quot;,
+        data: result,
+    });
+})
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const { token, newPassword } = req.body;
+    await authService.resetPassword(token, newPassword);
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;Password reset successfully&quot;,
+    });
+})
+
+export const refreshAccessToken = asyncHandler(async (req: Request, res: Response) =&gt; {
+    const incomingRefreshToken = req.cookies?.refreshToken;
+    if (!incomingRefreshToken) {
+        throw new AppError(&quot;No refresh token provided&quot;, StatusCodes.UNAUTHORIZED);
+    }
+    const result = await authService.refreshAccessToken(incomingRefreshToken);
+    res.cookie(&quot;refreshToken&quot;, result.refreshToken, {
+        ...baseCookieOptions,
+        maxAge: Number(ENV.REFRESH_TOKEN_EXPIRY) * 1000,
+    });
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: &quot;Access token refreshed&quot;,
+        data: {
+            accessToken: result.accessToken,
+            accessTokenExpiration: result.accessTokenExpiration,
+        },
+    });
+})</pre>
+
+</body>
+</html>
