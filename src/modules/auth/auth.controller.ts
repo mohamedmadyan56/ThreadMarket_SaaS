@@ -106,3 +106,15 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
         data: result,
     });
 })
+
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+    const { token, newPassword } = req.body;
+
+    await authService.resetPassword(token, newPassword);
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Password reset successfully",
+    });
+})
