@@ -118,3 +118,27 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
         message: "Password reset successfully",
     });
 })
+
+
+export const refreshAccessToken = asyncHandler(async (req: Request, res: Response) => {
+    const incomingRefreshToken = req.cookies?.refreshToken;
+    if (!incomingRefreshToken) {
+        throw new AppError("No refresh token provided", StatusCodes.UNAUTHORIZED);
+    }
+
+    const result = await authService.refreshAccessToken(incomingRefreshToken);
+
+    res.cookie("refreshToken", result.refreshToken, {
+        ...baseCookieOptions,
+        maxAge: Number(ENV.REFRESH_TOKEN_EXPIRY) * 1000,
+    });
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Access token refreshed",
+        data: {
+            accessToken: result.accessToken,
+            accessTokenExpiration: result.accessTokenExpiration,
+        },
+    });
+})
