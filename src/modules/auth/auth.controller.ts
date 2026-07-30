@@ -79,3 +79,16 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
         message: "Logged out successfully",
     });
 })
+
+
+export const sendOtp = asyncHandler(async (req: Request, res: Response) => {
+    const { email, purpose } = req.body;
+
+    const result = await authService.sendOtp(email, purpose);
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "OTP sent to email",
+        data: result,
+    });
+})
