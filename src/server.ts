@@ -1,29 +1,39 @@
 import express from "express";
-import { ENV } from "./helpers/ENV";
-import { connectDB } from "./utils/connectDB";
-import userRouter from "./routers/user.router";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import { ENV } from "./config/env";
+import { connectDB } from "./config/database";
+import authRouter from "./modules/auth/auth.routes";
+import brandRouter from "./modules/brand/brand.routes";
 import { StatusCodes } from "http-status-codes";
-import brandRouter from "./routers/brand.router";
+
 const app = express();
 connectDB();
 
+// Middleware — كلها كانت مفقودة قبل كده
+app.use(helmet());                    // أمان HTTP headers
+app.use(cors({ origin: true, credentials: true }));  // CORS للـ frontend
+app.use(morgan("dev"));                // تسجيل الطلبات
 app.use(express.json());
-app.use("/api/v1/auth", userRouter);
+app.use(cookieParser());               // ← جديد: عشان req.cookies يشتغل
+
+// Routes — من الموديولات الجديدة
+app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/brands", brandRouter);
 
+// Error handler
 app.use((err: any, req: any, res: any, next: any) => {
-  res.status(err.statusCode || 500).json({
-    success: false,
-    message: err.message,
-  });
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({ success: false, message: err.message || "Internal Server Error" });
 });
 
-app.use((req: any, res: any, next: any) => {
-  res.status(StatusCodes.NOT_FOUND).json({
-    success: false,
-    message: "Route not found",
-  });
+// 404
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
 });
+
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT}`);
 });
