@@ -46,5 +46,23 @@ export const verifyRegisterOtp = asyncHandler(async (req: Request, res: Response
 
 
 
+export const login = asyncHandler(async (req: Request, res: Response) => {
+    const { identifier, password } = req.body;
 
+    const result = await authService.login(identifier, password);
+
+    res.cookie("refreshToken", result.refreshToken, {
+        ...baseCookieOptions,
+        maxAge: Number(ENV.REFRESH_TOKEN_EXPIRY) * 1000,
+    })
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Login successful",
+        data: {
+            accessToken: result.accessToken,
+            accessTokenExpiration: result.accessTokenExpiration,
+            user: result.user,
+        },
+    })
+})
 
