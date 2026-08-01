@@ -8,7 +8,7 @@ export const validate = (schema: z.ZodSchema) => {
     try {
       const data = { ...req.body, ...req.query, ...req.params };
       const parsedData = schema.parse(data);
-      if (parsedData) next();
+      if (parsedData) return next();
     } catch (error) {
       if (error && error instanceof z.ZodError) {
         return next(
