@@ -1,12 +1,12 @@
 import { BrandDocType } from "../../generated/prisma/browser";
 import { brandModel } from "./brand.model";
 import AppError from "../../shared/errors/AppError";
-import { StatusCodes } from "http-status-codes";
+
 
 class BrandService {
     async getPublicBrandProfile(brandId: string) {
         const brand = await brandModel.findApprovedBrandById(brandId);
-        if (!brand) throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+        if (!brand) throw new AppError("Brand not found", 404);
 
         return {
             id: brand.id,

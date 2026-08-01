@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { brandService } from "./brand.service";
-import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../../shared/utils/asyncHandler";
 import AppError from "../../shared/errors/AppError";
 
@@ -9,7 +8,7 @@ export const getPublicBrandProfile = asyncHandler(async (req: Request, res: Resp
 
     const result = await brandService.getPublicBrandProfile(brandId);
 
-    return res.status(StatusCodes.OK).json({
+    return res.status(200).json({
         success: true,
         message: "Brand profile retrieved successfully",
         data: result,
