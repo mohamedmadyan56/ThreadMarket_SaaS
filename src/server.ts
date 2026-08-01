@@ -7,6 +7,7 @@ import { ENV } from "./config/env";
 import { connectDB } from "./config/database";
 import authRouter from "./modules/auth/auth.routes";
 import brandRouter from "./modules/brand/brand.routes";
+import usersRouter from "./modules/users/users.routes";
 import { StatusCodes } from "http-status-codes";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cookieParser());               // ← جديد: عشان req.cookies ي�
 // Routes — من الموديولات الجديدة
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/brands", brandRouter);
+app.use("/api/v1/users", usersRouter);
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {
