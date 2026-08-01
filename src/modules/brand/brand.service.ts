@@ -4,6 +4,19 @@ import AppError from "../../shared/errors/AppError";
 import { StatusCodes } from "http-status-codes";
 
 class BrandService {
+    async getPublicBrandProfile(brandId: string) {
+        const brand = await brandModel.findApprovedBrandById(brandId);
+        if (!brand) throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+
+        return {
+            id: brand.id,
+            name: brand.name,
+            verificationStatus: brand.verificationStatus,
+            rating: Number(brand.rating),
+            logoUrl: brand.logoUrl,
+        };
+    }
+
     async getBrandVerificationStatus(brandId: string, userId: string, role: string) {
         const brand = await brandModel.findBrandWithDocuments(brandId);
         if (!brand) throw new AppError("Brand not found", 404);

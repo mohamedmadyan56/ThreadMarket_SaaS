@@ -4,6 +4,18 @@ import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../../shared/utils/asyncHandler";
 import AppError from "../../shared/errors/AppError";
 
+export const getPublicBrandProfile = asyncHandler(async (req: Request, res: Response) => {
+    const { brandId } = req.params as { brandId: string };
+
+    const result = await brandService.getPublicBrandProfile(brandId);
+
+    return res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Brand profile retrieved successfully",
+        data: result,
+    });
+});
+
 export const brandVerificationStatus = asyncHandler(async (req: Request, res: Response) => {
     const { brandId } = req.params as { brandId: string };
     const user = (req as any).user;

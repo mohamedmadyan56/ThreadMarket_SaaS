@@ -8,6 +8,16 @@ class BrandModel {
             include: { documents: true }
         })
     }
+
+    async findApprovedBrandById(brandId: string) {
+        return prisma.brand.findFirst({
+            where: {
+                id: brandId as any,
+                isActive: true,
+                verificationStatus: { notIn: ["pending", "suspended"] },
+            },
+        });
+    }
 }
 
 export const brandModel = new BrandModel();
