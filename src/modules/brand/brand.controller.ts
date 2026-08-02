@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { brandService } from "./brand.service";
-import { StatusCodes } from "http-status-codes";
 import { asyncHandler } from "../../shared/utils/asyncHandler";
 import AppError from "../../shared/errors/AppError";
 import { authModel } from "../auth/auth.model";
@@ -42,10 +41,16 @@ export const createBrand = asyncHandler(async (req: any, res: Response) => {
     locationDetails,
     true, // isMain
   );
+export const getPublicBrandProfile = asyncHandler(async (req: Request, res: Response) => {
+    const { brandId } = req.params as { brandId: string };
 
-  return res
-    .status(StatusCodes.CREATED)
-    .json({ success: true, message: "OK", data: { brand, branchLocation } });
+    const result = await brandService.getPublicBrandProfile(brandId);
+
+    return res.status(200).json({
+        success: true,
+        message: "Brand profile retrieved successfully",
+        data: result,
+    });
 });
 
 export const updateBrandProfile = asyncHandler(
@@ -79,6 +84,7 @@ export const updateBrandProfile = asyncHandler(
 
 export const brandVerificationStatus = asyncHandler(
   async (req: Request, res: Response) => {
+export const brandVerificationStatus = asyncHandler(async (req: Request, res: Response) => {
     const { brandId } = req.params as { brandId: string };
     const user = (req as any).user;
 
