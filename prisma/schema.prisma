@@ -268,13 +268,14 @@ model Variant {
 }
 
 model Category {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique @map("category_name")
-  media     Json
-  ishidden  Boolean   @default(false)
-  Products  Product[]
-  createdAt DateTime  @default(now())
-  updateAt  DateTime  @default(now())
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @map("category_name")
+  description String
+  media       Json
+  ishidden    Boolean   @default(false)
+  Products    Product[]
+  createdAt   DateTime  @default(now())
+  updateAt    DateTime  @default(now())
 }
 
 model Review {
