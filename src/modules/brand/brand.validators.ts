@@ -10,7 +10,7 @@ const booleanLikeSchema = z.preprocess((value) => {
 }, z.boolean().optional());
 
 export const brandVerificationStatusSchema = z.object({
-  brandId: z.string().uuid({ message: "Invalid brand ID format" }),
+    brandId: z.string().uuid({ message: "Invalid brand ID format" }),
 });
 
 export const createBrandSchema = z.object({
@@ -19,6 +19,8 @@ export const createBrandSchema = z.object({
     latitude: z.number(),
     longitude: z.number(),
   }),
+export const getBrandProfileSchema = z.object({
+    brandId: z.string().uuid({ message: "Invalid brand ID format" }),
 });
 
 export const updateBrandProfileSchema = z.object({
