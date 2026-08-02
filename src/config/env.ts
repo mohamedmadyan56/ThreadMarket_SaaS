@@ -14,4 +14,5 @@ export const ENV = {
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
   DATABASE_URL: process.env.DATABASE_URL,
   NODE_ENV: process.env.NODE_ENV,
+  Google_Maps_Key: process.env.Google_Maps_Key,
 };

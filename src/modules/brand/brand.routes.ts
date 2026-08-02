@@ -1,15 +1,21 @@
 import { Router } from "express";
 import { validate } from "../../shared/middleware/validate";
 import authenticate from "../../shared/middleware/authenticate";
-import { brandVerificationStatus } from "./brand.controller";
-import { brandVerificationStatusSchema } from "./brand.validators";
+import { brandVerificationStatus, createBrand } from "./brand.controller";
+import {
+  brandVerificationStatusSchema,
+  createBrandSchema,
+} from "./brand.validators";
 
 const router = Router();
+router.use(authenticate);
 
-router.get("/:brandId/verification-status",
-    authenticate,
-    validate(brandVerificationStatusSchema),
-    brandVerificationStatus,
+router.route("/").post(validate(createBrandSchema), createBrand);
+
+router.get(
+  "/:brandId/verification-status",
+  validate(brandVerificationStatusSchema),
+  brandVerificationStatus,
 );
 
 export default router;
