@@ -1,36 +1,42 @@
 import { BrandDocType } from "../../generated/prisma/browser";
 import { brandModel } from "./brand.model";
 import AppError from "../../shared/errors/AppError";
-import { StatusCodes } from "http-status-codes";
-import { uploadToCloudinary } from "../../shared/utils/cloudinary";
-import { ENV } from "../../config/env";
-import axios from "axios";
+
+
 class BrandService {
-  // Create Brand With All Details and With Main Branch Location
-  async createBrand(data: { userId: string; name: string; logoUrl?: string }) {
-    // Check if the user has already created brand
-    const userBrand = await brandModel.getUserBrand(data.userId);
-    if (userBrand)
-      throw new AppError(
-        "You'have already Created Brand",
-        StatusCodes.BAD_REQUEST,
-      );
-    // Check if the brand name is existed
-    const brandName = await brandModel.getBrandByCondition({ name: data.name });
-    if (brandName)
-      throw new AppError("Brand Name is existed", StatusCodes.BAD_REQUEST);
+    async getPublicBrandProfile(brandId: string) {
+        const brand = await brandModel.findApprovedBrandById(brandId);
+        if (!brand) throw new AppError("Brand not found", 404);
 
-    // Upload Logo to cloudinary and get the url
-    let logoUrl = null;
-    let logoUrl_id = null;
+        return {
+            id: brand.id,
+            name: brand.name,
+            verificationStatus: brand.verificationStatus,
+            rating: Number(brand.rating),
+            logoUrl: brand.logoUrl,
+        };
+    }
 
-    if (data.logoUrl) {
-      const { secure_url, public_id } = await uploadToCloudinary(
-        data.logoUrl,
-        "brand-logos",
-      );
-      logoUrl = secure_url;
-      logoUrl_id = public_id;
+    async getBrandVerificationStatus(brandId: string, userId: string, role: string) {
+        const brand = await brandModel.findBrandWithDocuments(brandId);
+        if (!brand) throw new AppError("Brand not found", 404);
+
+        if (brand.userId !== userId && role !== "admin") {
+            throw new AppError("Unauthorized", 403);
+        }
+
+        const allTypes = Object.values(BrandDocType);
+        const submitted = new Set(brand.documents.map(d => d.docType));
+        const missing = allTypes.filter(t => !submitted.has(t));
+
+        return {
+            verificationStatus: brand.verificationStatus,
+            submittedDocuments: brand.documents.map(d => ({
+                docType: d.docType, fileUrl: d.fileUrl,
+                status: d.status, rejectionReason: (d as any).rejectionReason ?? null,
+            })),
+            missingDocuments: missing,
+        };
     }
 
     // Perpare data for brand creation

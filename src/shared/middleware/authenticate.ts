@@ -15,6 +15,8 @@ const authenticate = asyncHandler(
 
     try {
       const decoded = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+      console.log(decoded);
+      // todo => if the user has removed but the user know the token he will always have access to some controllers
       (req as any).user = decoded;
       next();
     } catch {
