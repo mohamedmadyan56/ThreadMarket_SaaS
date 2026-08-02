@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Jira Task: Update Current Profile - PATCH /users/me</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Segoe UI",Tahoma,sans-serif;max-width:1100px;margin:40px auto;padding:30px;background:#f0f4f8;line-height:2;color:#2d3748}
+h1{color:#1a202c;border-bottom:4px solid #4299e1;padding-bottom:12px;font-size:26px;text-align:center;margin-bottom:10px}
+h2{color:#2b6cb0;margin-top:40px;border-right:5px solid #4299e1;padding-right:15px;font-size:22px}
+h3{color:#2c7a7b;margin-top:25px;font-size:18px}
+h4{color:#553c9a;margin-top:18px;font-size:16px}
+p{margin:12px 0;color:#4a5568}
+code{background:#edf2f7;padding:1px 6px;border-radius:4px;font-family:"Courier New",monospace;direction:ltr;font-size:0.9em}
+pre{background:#2d3748;color:#e2e8f0;padding:15px 20px;border-radius:8px;overflow-x:auto;direction:ltr;font-size:13px;line-height:1.6;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:15px 0}
+th,td{border:1px solid #cbd5e0;padding:10px 12px;text-align:right}
+th{background:#4299e1;color:white}
+tr:nth-child(even){background:#f7fafc}
+.note{background:#ebf8ff;border-right:5px solid #4299e1;padding:15px 20px;margin:15px 0;border-radius:6px}
+.warn{background:#fff5f5;border-right:5px solid #e53e3e;padding:15px 20px;margin:15px 0;border-radius:6px}
+.tip{background:#f0fff4;border-right:5px solid #38a169;padding:15px 20px;margin:15px 0;border-radius:6px}
+ul,ol{padding-right:25px;margin:10px 0}
+li{margin:6px 0;color:#4a5568}
+.badge{display:inline-block;background:#805ad5;color:#fff;border-radius:4px;padding:2px 10px;font-size:0.8em;direction:ltr}
+.flow{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0;padding:15px;background:#1a202c;border-radius:10px;color:white;direction:ltr;text-align:center}
+.flow span{background:#4299e1;padding:8px 16px;border-radius:6px;font-weight:600}
+.flow .arrow{background:none;color:#e2e8f0;font-size:1.5em}
+.step-num{display:inline-block;background:#4299e1;color:#fff;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;font-weight:700;margin-left:8px;direction:ltr}
+.file-box{background:#1a202c;color:#e2e8f0;padding:10px 15px;border-radius:6px;direction:ltr;text-align:left;font-family:"Courier New",monospace;font-size:13px;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>Jira Task: Update Current Profile (PATCH /users/me)</h1>
+<p style="text-align:center"><span class="badge">PATCH /users/me</span> &nbsp; <span class="badge">Authentication: Required</span> &nbsp; <span class="badge">Roles: All</span></p>
+<p style="text-align:center">📘 شرح كامل من الصفر — التاسك التاني في سلسلة البروفايل</p>
+<div class="note"><strong>قبل ما تبدأ:</strong> التاسك ده مكمّل للتاسك الأول <code>get-current-profile.html</code>. لازم يكون عندك موديول <code>src/modules/user/</code> جاهز (فيه <code>user.model.ts</code> و<code>user.service.ts</code> و<code>user.controller.ts</code> و<code>user.routes.ts</code>) وركّبته في <code>server.ts</code>. هنا هنضيف عليه بس.</div>
+
+<h2>0. المواصفات المطلوبة من Jira</h2>
+<p>أي مستخدم مسجّل دخول يقدر يحدّث بياناته الشخصية (الاسم، الإيميل، الموبايل، صورة البروفايل). <strong>الفرق عن التاسك الأول:</strong> هنا في <code>Request Body</code> وكل الحقول <strong>اختيارية</strong>.</p>
+<table>
+<tr><th>العنصر</th><th>التفاصيل</th></tr>
+<tr><td>HTTP Method</td><td><code>PATCH</code></td></tr>
+<tr><td>Endpoint</td><td><code>/api/v1/users/me</code></td></tr>
+<tr><td>Headers</td><td><code>Authorization: Bearer &lt;accessToken&gt;</code></td></tr>
+<tr><td>Body</td><td>كلها اختيارية: <code>name</code>، <code>email</code>، <code>phone</code>، <code>profilePictureUrl</code></td></tr>
+<tr><td>Validation</td><td>الإيميل لازم يكون صالح لو اتبعت، الموبايل لازم يكون unique لو اتغير</td></tr>
+<tr><td>Roles المصرح بيها</td><td>كل الأدوار</td></tr>
+</table>
+<h3>مثال على الـ Request Body</h3>
+<pre>{
+  "name": "Ahmed El Hassan",
+  "profilePictureUrl": "https://cdn.example.com/avatar.png"
+}</pre>
+<h3>الـ Response الناجح — 200</h3>
+<pre>{
+  "success": true,
+  "message": "Profile updated successfully",
+  "data": {
+    "id": "uuid",
+    "name": "Ahmed El Hassan"
+  }
+}</pre>
+<h3>الأخطاء الممكنة</h3>
+<table>
+<tr><th>الحالة</th><th>الكود</th><th>إمتى بتحصل</th></tr>
+<tr><td>Validation Error</td><td>400</td><td>بيانات غلط (إيميل مش صالح، URL غلط، Body فاضي)</td></tr>
+<tr><td>Unauthorized</td><td>401</td><td>مفيش Token أو الـ Token غلط/منتهي</td></tr>
+<tr><td>Conflict</td><td>409</td><td>الإيميل أو الموبايل مستخدمين من حساب تاني</td></tr>
+<tr><td>Not Found</td><td>404</td><td>المستخدم مش موجود في DB</td></tr>
+<tr><td>Internal Server Error</td><td>500</td><td>أي خطأ غير متوقع</td></tr>
+</table>
+
+<h2>1. ليه PATCH مش PUT؟</h2>
+<p>الفرق بيأثر على طريقة كتابة الكود كليًا:</p>
+<table>
+<tr><th>الميثود</th><th>المعنى</th><th>مثال</th></tr>
+<tr><td><code>PUT</code></td><td>استبدال <strong>كامل</strong> للموارد — لو ما بعتتش حقل، يتصفر/null</td><td>ارسل <code>{name, email}</code> بس → phone يبقى null</td></tr>
+<tr><td><code>PATCH</code></td><td>تحديث <strong>جزئي</strong> — بيعدّل الحقول المرسلة بس، واللي مسبتهموش بيظلوا زي ما هم</td><td>ارسل <code>{name}</code> بس → phone يفضل محفوظ</td></tr>
+</table>
+<div class="tip"><strong>تأثيرها على الكود:</strong> مع PATCH لازم نبني <code>data</code> ديناميكي — نضيف فيه الحقل اللي جاي فقط. لو استخدمنا <code>PUT</code>، كنا هنعمل update بكل الحقول (حتى الفاضية).</div>
+
+<h2>2. افهم validate middleware (Zod) — لأن ده أول تاسك فيه Body</h2>
+<p>المكان: <code>src/shared/middleware/validate.ts</code>. بياخد <code>Zod schema</code>، يدمج الـ body/query/params، ولو البيانات غلط يرمي 400.</p>
+<pre>export const validate = (schema: z.ZodSchema) => {
+  return (req, res, next) => {
+    try {
+      const data = { ...req.body, ...req.query, ...req.params };
+      schema.parse(data);          // لو رمى → نمسك الخطأ
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return next(new AppError(error.issues[0]!.message, 400));
+      }
+    }
+  };
+};</pre>
+<div class="warn"><strong>قاعدة مهمة للتاسك ده:</strong> كل الحقول في Jira <strong>اختيارية</strong>، لكن المستخدم مفروض يبعت <strong>حقل واحد على الأقل</strong>. الزود تقدر تعملها بـ <code>.refine()</code> في آخر الـ schema — لو الـ Body فاضي ({}), يرمي 400.</div>
+
+<h2>3. الـ Mapping بين الـ DB والـ Jira</h2>
+<table>
+<tr><th>Jira (RequestBody)</th><th>العمود في DB</th><th>ملاحظة</th></tr>
+<tr><td><code>name</code></td><td><code>username</code></td><td>نفس الحقل، اسم مختلف</td></tr>
+<tr><td><code>email</code></td><td><code>email</code></td><td>فيه unique constraint في DB</td></tr>
+<tr><td><code>phone</code></td><td><code>phone</code></td><td>فيه unique constraint في DB</td></tr>
+<tr><td><code>profilePictureUrl</code></td><td><code>picture_url</code></td><td>رابط الصورة</td></tr>
+</table>
+
+<h2>4. رحلة الطلب</h2>
+<div class="flow">
+<span>Client</span>
+<span class="arrow">→</span>
+<span>PATCH /api/v1/users/me</span>
+<span class="arrow">→</span>
+<span>authenticate</span>
+<span class="arrow">→</span>
+<span>validate (Zod)</span>
+<span class="arrow">→</span>
+<span>Controller</span>
+<span class="arrow">→</span>
+<span>Service</span>
+<span class="arrow">→</span>
+<span>Model → DB</span>
+<span class="arrow">→</span>
+<span>Response 200</span>
+</div>
+
+<h2>5. الخطوات العملية</h2>
+
+<h3>الخطوة 1: هيكل الملفات بعد التاسك ده</h3>
+<div class="file-box">src/modules/user/
+├── user.model.ts        ← أضيف ميثودز جدد (findByEmail, findByPhone, updateProfile)
+├── user.service.ts      ← أضيف updateCurrentUser
+├── user.controller.ts   ← أضيف updateCurrentUser
+├── user.routes.ts       ← أضيف PATCH /me
+└── user.validators.ts   ← ⭐ ملف جديد (schema بتاع التحديث)</div>
+
+<h3>الخطوة 2: user.validators.ts — ملف جديد</h3>
+<p>schema بيوافق مواصفات Jira بالظبط: كل حقل optional + `.refine` عشان يرفض الـ Body الفاضي.</p>
+<pre>import z from "zod";
+
+export const updateProfileSchema = z
+  .object({
+    name: z.string().min(1, "Name cannot be empty").optional(),
+    email: z.string().email("Invalid email format").optional(),
+    phone: z.string().min(8, "Phone must be at least 8 characters").optional(),
+    profilePictureUrl: z.string().url("Invalid URL").optional(),
+  })
+  .refine((data) => Object.values(data).some((v) => v !== undefined), {
+    message: "At least one field must be provided",
+  });
+</pre>
+<div class="note"><strong>إزاي الـ <code>.refine</code> شغال:</strong> لو المستخدم بعت <code>{}</code> أو <code>{}</code>، كل القيم هتكون <code>undefined</code>، فـ <code>.some()</code> يرجع <code>false</code> → رمي 400. لو بعت حقل واحد على الأقل، يعدي.</div>
+
+<h3>الخطوة 3: user.model.ts — أضيف 3 ميثودز</h3>
+<p>ميثودز جديدة بنفس نمط <code>findProfileById</code> الموجود:</p>
+<pre>async findByEmail(email: string) {
+  return prisma.user.findFirst({ where: { email } });
+}
+
+async findByPhone(phone: string) {
+  return prisma.user.findFirst({ where: { phone } });
+}
+
+async updateProfile(userId: string, data: any) {
+  return prisma.user.update({
+    where: { id: userId },
+    data,
+    select: { id: true, username: true, email: true, phone: true, role: true },
+  });
+}</pre>
+<div class="tip"><strong>ليه الـ <code>select</code> في الـ update برضه؟</strong> عشان الـ update يرجع المستخدم بعد التعديل. لو من غير select هيرجع password و otp — نفس مشكلة الأمان. بناخد الحقول الآمنة بس.</div>
+
+<h3>الخطوة 4: user.service.ts — أضيف updateCurrentUser</h3>
+<p>دي قلب التاسك: فحص الـ uniqueness، بناء الـ data الديناميكي، ثم الـ update.</p>
+<pre>import { userModel } from "./user.model";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+class UserService {
+  // ... getCurrentUser موجود
+
+  async updateCurrentUser(
+    userId: string,
+    updates: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      profilePictureUrl?: string;
+    },
+  ) {
+    const user = await userModel.findProfileById(userId);
+    if (!user) throw new AppError("User not found", StatusCodes.NOT_FOUND);
+
+    const data: any = {};          // ← data ديناميكي (فكرة PATCH)
+
+    if (updates.name !== undefined) {
+      data.username = updates.name;          // name ← username
+    }
+
+    if (updates.email !== undefined) {
+      const exists = await userModel.findByEmail(updates.email);
+      if (exists && exists.id !== userId) {
+        throw new AppError("Email already in use", StatusCodes.CONFLICT);
+      }
+      data.email = updates.email;
+    }
+
+    if (updates.phone !== undefined) {
+      const exists = await userModel.findByPhone(updates.phone);
+      if (exists && exists.id !== userId) {
+        throw new AppError("Phone already in use", StatusCodes.CONFLICT);
+      }
+      data.phone = updates.phone;
+    }
+
+    if (updates.profilePictureUrl !== undefined) {
+      data.picture_url = updates.profilePictureUrl;   // ← mapping
+    }
+
+    const updated = await userModel.updateProfile(userId, data);
+
+    return { id: updated.id, name: updated.username };  // ← شكل الرد من Jira
+  }
+}
+
+export const userService = new UserService();</pre>
+<div class="warn"><strong>ليه بنستخدم <code>updates.name !== undefined</code> مش <code>if (updates.name)</code>؟</strong> لأن ممكن المستخدم يبعت <code>"name": ""</code> (فاضي). الـ <code>if (name)</code> هيعدي على الفاضي، لكن <code>!== undefined</code> بيشيك على "الحقل اتضاف في الـ request أو لأ" مش على "فيه قيمة" — وده اللي يفرق في PATCH. لكن لاحظ إن الـ Zod schema بيمنع الفاضي برضه.</div>
+<div class="note"><strong>ليه فحص الـ uniqueness قبل الـ update؟</strong> جدول الـ DB فيه unique constraint على email و phone. لو حصل تضارب، الـ Prisma هيرمي خطأ 500. بنفحص احنا الأول ونرد رسالة واضحة 409. خد بالك من شرط <code>exists.id !== userId</code> — عشان المستخدم نفسه يقدر يبعت نفس الإيميل بتاعه من غير ما يحصل "تعارض" مع نفسه!</div>
+
+<h3>الخطوة 5: user.controller.ts — أضيف handler</h3>
+<pre>import { Request, Response } from "express";
+import { userService } from "./user.service";
+import { StatusCodes } from "http-status-codes";
+import { asyncHandler } from "../../shared/utils/asyncHandler";
+import AppError from "../../shared/errors/AppError";
+
+export const updateCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) throw new AppError("Not authenticated", StatusCodes.UNAUTHORIZED);
+
+  const updated = await userService.updateCurrentUser(userId, req.body);
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    message: "Profile updated successfully",
+    data: updated,
+  });
+});</pre>
+
+<h3>الخطوة 6: user.routes.ts — أضيف الروت</h3>
+<p>راجع الـ import في أول الملف وضيف الـ schema والـ handler، ثم الروت:</p>
+<pre>import { Router } from "express";
+import authenticate from "../../shared/middleware/authenticate";
+import { validate } from "../../shared/middleware/validate";
+import { getCurrentUser, updateCurrentUser } from "./user.controller";
+import { updateProfileSchema } from "./user.validators";
+
+const router = Router();
+
+router.get("/me", authenticate, getCurrentUser);
+router.patch("/me", authenticate, validate(updateProfileSchema), updateCurrentUser);
+
+export default router;</pre>
+<div class="note"><strong>الترتيب هنا مهم جدًا:</strong> <code>authenticate</code> الأول (عشان نعرف مين المستخدم) → <code>validate</code> (عشان نتأكد من البيانات) → الـ Controller. لو عكست، حد من غير Token ممكن يبعت بيانات ويعمل update لحساب حد.</div>
+
+<h3>الخطوة 7: شغّل والتأكد</h3>
+<pre>npx tsc --noEmit
+npm run dev</pre>
+
+<h2>6. التجربة (Postman)</h2>
+<ol>
+<li>اعمل Login: <code>POST /api/v1/auth/login</code> → خد الـ accessToken.</li>
+<li>Request جديد: <code>PATCH http://localhost:4000/api/v1/users/me</code>.</li>
+<li>تبويب Authorization → Bearer Token → الصق الـ Token.</li>
+<li>تبويب Body → raw → JSON.</li>
+<li>جرب دي:
+<pre>{
+  "name": "Ahmed El Hassan",
+  "phone": "+201001234567"
+}</pre></li>
+<li>Send → 200 والبيانات المحدّثة.</li>
+</ol>
+<p>أو بـ curl:</p>
+<pre>curl -X PATCH http://localhost:4000/api/v1/users/me \
+  -H "Authorization: Bearer &lt;accessToken&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Ahmed El Hassan"}'</pre>
+
+<h2>7. حالات الاختبار (نفّذها كلها)</h2>
+<table>
+<tr><th>الحالة</th><th>المتوقع</th></tr>
+<tr><td>تحديث الاسم فقط</td><td>200 + الاسم اتغير والبقية زي ما هي</td></tr>
+<tr><td>تحديث إيميل + موبايل سليمين</td><td>200 + الاتنين اتحدّثوا</td></tr>
+<tr><td>إيميل بصيغة غلط (مش valid)</td><td>400 "Invalid email format"</td></tr>
+<tr><td>Body فاضي <code>{}</code></td><td>400 "At least one field must be provided"</td></tr>
+<tr><td>إيميل مستخدم من حساب تاني</td><td>409 "Email already in use"</td></tr>
+<tr><td>موبايل مستخدم من حساب تاني</td><td>409 "Phone already in use"</td></tr>
+<tr><td>المستخدم يبعت إيميله هو نفسه</td><td>200 — ممنوع يتقاله "already in use" لأنه لنفسه</td></tr>
+<tr><td>من غير Token</td><td>401</td></tr>
+<tr><td>URL غلط في profilePictureUrl</td><td>400 "Invalid URL"</td></tr>
+</table>
+
+<h2>8. أخطاء شائعة وقصّها</h2>
+<table>
+<tr><th>المشكلة</th><th>السبب والحل</th></tr>
+<tr><td>الـ password اتعدّل بالغلط</td><td>مستحيل لو مفيش حقل password في الـ schema والـ service بيبني data من الحقول الـ 4 بس</td></tr>
+<tr><td>409 بتيجي على المستخدم نفسه</td><td>نقص شرط <code>exists.id !== userId</code> في فحص الـ uniqueness</td></tr>
+<tr><td>الـ email / phone اتصفّروا لما بعت name بس</td><td>استخدمت update كامل بدل ديناميكي — ارجع لـ <code>data: any = {}</code> وأنت بتضيف الحقول اللي جاية بس</td></tr>
+<tr><td>بيطلع 500 بدل 409</td><td>نسيت الفحص المسبق وسيبت الـ DB يرمي unique constraint error</td></tr>
+<tr><td>Body فاضي عدى من غير خطأ</td><td>نسيت الـ <code>.refine()</code> في الـ schema</td></tr>
+<tr><td>update بيرجع password في الرد</td><td>مفيش <code>select</code> في ميثود updateProfile</td></tr>
+</table>
+
+<div class="tip"><strong>الخلاصة:</strong> التاسك ده بيعلّمك 3 مفاهيم جديدة:
+<ul>
+<li><strong>PATCH</strong> → بناء <code>data</code> ديناميكي يضيف الحقول المرسلة بس.</li>
+<li><strong>Zod validate</strong> → schema بكل الحقول optional + <code>refine</code> لرفض الـ Body الفاضي.</li>
+<li><strong>Uniqueness check</strong> → فحص email/phone قبل الـ update مع استثناء المستخدم نفسه <code>exists.id !== userId</code>.</li>
+</ul>
+وشكل الرد النهائي: <code>{ id, name }</code> كما طلبت Jira بالظبط.</div>
+
+</body>
+</html>
