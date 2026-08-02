@@ -9,6 +9,7 @@ import authRouter from "./modules/auth/auth.routes";
 import brandRouter from "./modules/brand/brand.routes";
 import categoryRouter from "./modules/category/category.routes";
 import { StatusCodes } from "http-status-codes";
+import userRouter from "./modules/user/user.routes";
 
 const app = express();
 connectDB();
