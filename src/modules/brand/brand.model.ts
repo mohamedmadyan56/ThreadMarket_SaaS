@@ -2,12 +2,12 @@ import prisma from "../../config/database";
 import { BrandDocType } from "../../generated/prisma/browser";
 
 class BrandModel {
-  async findBrandWithDocuments(brandId: string) {
-    return prisma.brand.findUnique({
-      where: { id: brandId as any },
-      include: { documents: true },
-    });
-  }
+    async findBrandWithDocuments(brandId: string) {
+        return prisma.brand.findUnique({
+            where: { id: brandId as any },
+            include: { documents: true }
+        })
+    }
 
   async findBrandById(brandId: string) {
     return prisma.brand.findUnique({ where: { id: brandId as any } });
@@ -89,6 +89,15 @@ class BrandModel {
       ],
     });
   }
+    async findApprovedBrandById(brandId: string) {
+        return prisma.brand.findFirst({
+            where: {
+                id: brandId as any,
+                isActive: true,
+                verificationStatus: { notIn: ["pending", "suspended"] },
+            },
+        });
+    }
 }
 
 export const brandModel = new BrandModel();
