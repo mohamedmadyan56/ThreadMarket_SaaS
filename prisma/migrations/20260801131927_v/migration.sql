@@ -43,7 +43,7 @@ CREATE TABLE "User" (
     "lockedUntil" TIMESTAMP(3),
     "isOnline" BOOLEAN NOT NULL DEFAULT false,
     "brandDocumentId" UUID,
-    "wishlistUserId" UUID NOT NULL,
+    "wishlistUserId" UUID,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -63,11 +63,33 @@ CREATE TABLE "brands" (
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "payment_details" JSONB,
-    "address" TEXT NOT NULL,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "brands_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "brand_branches" (
+    "id" UUID NOT NULL,
+    "brand_id" UUID NOT NULL,
+    "branch_name" TEXT,
+    "latitude" DECIMAL(9,6),
+    "longitude" DECIMAL(9,6),
+    "place_id" TEXT,
+    "formatted_address" TEXT,
+    "address_line" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "country" TEXT,
+    "postal_code" TEXT,
+    "location_granularity" TEXT,
+    "is_main" BOOLEAN NOT NULL DEFAULT false,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "brand_branches_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -246,6 +268,9 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "brands_user_id_key" ON "brands"("user_id");
 
 -- CreateIndex
+CREATE INDEX "brand_branches_brand_id_idx" ON "brand_branches"("brand_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "variants_cartId_key" ON "variants"("cartId");
 
 -- CreateIndex
@@ -268,6 +293,9 @@ CREATE UNIQUE INDEX "Courier_delieveryCId_key" ON "Courier"("delieveryCId");
 
 -- AddForeignKey
 ALTER TABLE "brands" ADD CONSTRAINT "brands_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "brand_branches" ADD CONSTRAINT "brand_branches_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brands"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "brand_documents" ADD CONSTRAINT "brand_documents_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brands"("id") ON DELETE CASCADE ON UPDATE CASCADE;

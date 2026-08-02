@@ -5,6 +5,7 @@ import { getPublicBrandProfile, brandVerificationStatus } from "./brand.controll
 import { getBrandProfileSchema, brandVerificationStatusSchema } from "./brand.validators";
 
 const router = Router();
+router.use(authenticate);
 
 router.get("/:brandId",
     validate(getBrandProfileSchema),

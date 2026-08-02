@@ -20,10 +20,15 @@ export const brandVerificationStatus = asyncHandler(async (req: Request, res: Re
     const user = (req as any).user;
 
     if (!user?.id) {
-        throw new AppError("Not authenticated", 401);
+      throw new AppError("Not authenticated", 401);
     }
 
-    const result = await brandService.getBrandVerificationStatus(brandId, user.id, user.role);
+    const result = await brandService.getBrandVerificationStatus(
+      brandId,
+      user.id,
+      user.role,
+    );
 
     return res.status(200).json({ success: true, message: "OK", data: result });
-});
+  },
+);
