@@ -13,6 +13,8 @@ import {
   createBrandSchema,
   updateBrandProfileSchema,
 } from "./brand.validators";
+import { getPublicBrandProfile, brandVerificationStatus } from "./brand.controller";
+import { getBrandProfileSchema, brandVerificationStatusSchema } from "./brand.validators";
 
 const router = Router();
 router.use(authenticate);
@@ -34,6 +36,15 @@ router.get(
   authorize("admin", "brand"),
   validate(brandVerificationStatusSchema),
   brandVerificationStatus,
+router.get("/:brandId",
+    validate(getBrandProfileSchema),
+    getPublicBrandProfile,
+);
+
+router.get("/:brandId/verification-status",
+    authenticate,
+    validate(brandVerificationStatusSchema),
+    brandVerificationStatus,
 );
 
 export default router;
