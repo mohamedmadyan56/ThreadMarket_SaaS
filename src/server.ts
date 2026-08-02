@@ -8,27 +8,33 @@ import { connectDB } from "./config/database";
 import authRouter from "./modules/auth/auth.routes";
 import brandRouter from "./modules/brand/brand.routes";
 import usersRouter from "./modules/users/users.routes";
+import categoryRouter from "./modules/category/category.routes";
 import { StatusCodes } from "http-status-codes";
+import userRouter from "./modules/user/user.routes";
 
 const app = express();
 connectDB();
 
 // Middleware — كلها كانت مفقودة قبل كده
-app.use(helmet());                    // أمان HTTP headers
-app.use(cors({ origin: true, credentials: true }));  // CORS للـ frontend
-app.use(morgan("dev"));                // تسجيل الطلبات
+app.use(helmet()); // أمان HTTP headers
+app.use(cors({ origin: true, credentials: true })); // CORS للـ frontend
+app.use(morgan("dev")); // تسجيل الطلبات
 app.use(express.json());
-app.use(cookieParser());               // ← جديد: عشان req.cookies يشتغل
+app.use(cookieParser()); // ← جديد: عشان req.cookies يشتغل
 
 // Routes — من الموديولات الجديدة
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/brands", brandRouter);
 app.use("/api/v1/users", usersRouter);
+app.use("/api/v1/categories", categoryRouter);
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {
   const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({ success: false, message: err.message || "Internal Server Error" });
+  console.log(err);
+  res
+    .status(statusCode)
+    .json({ success: false, message: err.message || "Internal Server Error" });
 });
 
 // 404

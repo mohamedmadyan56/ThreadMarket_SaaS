@@ -1,6 +1,5 @@
 import prisma from "../../config/database";
 
-
 class BrandModel {
     async findBrandWithDocuments(brandId: string) {
         return prisma.brand.findUnique({
