@@ -1,17 +1,26 @@
 import prisma from "../../config/database";
-
+import { Role } from "../../generated/prisma/enums";
 class AuthModel {
   async findById(id: string) {
     return prisma.user.findUnique({
       where: { id },
       select: {
-        id: true, username: true, email: true,
-        phone: true, password: true, role: true,
-        picture_url: true, refreshToken: true,
-        isBanned: true, isOnline: true,
-        failedLoginAttempts: true, lockedUntil: true,
-        otp: true, otp_expiration: true,
-        otp_purpose: true, passwordChangedAt: true,
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        password: true,
+        role: true,
+        picture_url: true,
+        refreshToken: true,
+        isBanned: true,
+        isOnline: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
+        otp: true,
+        otp_expiration: true,
+        otp_purpose: true,
+        passwordChangedAt: true,
       },
     });
   }
@@ -27,18 +36,32 @@ class AuthModel {
   }
 
   async createUser(data: {
-    username: string; email: string; password: string;
-    picture_url?: string; picture_url_id?: string; isVerified?: boolean;
-  }) { return prisma.user.create({ data }); }
+    username: string;
+    email: string;
+    password: string;
+    picture_url?: string;
+    picture_url_id?: string;
+    isVerified?: boolean;
+  }) {
+    return prisma.user.create({ data });
+  }
 
   async updateRefreshToken(userId: string, refreshToken: string | null) {
-    return prisma.user.update({ where: { id: userId }, data: { refreshToken } });
+    return prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken },
+    });
   }
 
   async updateAfterLogin(userId: string, refreshToken: string) {
     return prisma.user.update({
       where: { id: userId },
-      data: { failedLoginAttempts: 0, lockedUntil: null, isOnline: true, refreshToken },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        isOnline: true,
+        refreshToken,
+      },
     });
   }
 
@@ -53,7 +76,12 @@ class AuthModel {
     return prisma.user.update({ where: { id: userId }, data: updateData });
   }
 
-  async updateOtp(userId: string, otp: string, expiration: Date, purpose: string) {
+  async updateOtp(
+    userId: string,
+    otp: string,
+    expiration: Date,
+    purpose: string,
+  ) {
     return prisma.user.update({
       where: { id: userId },
       data: { otp, otp_expiration: expiration, otp_purpose: purpose as any },
@@ -78,6 +106,24 @@ class AuthModel {
     return prisma.user.update({
       where: { id: userId },
       data: { refreshToken: null, isOnline: false },
+    });
+  }
+
+  async updateUser(
+    userId: string,
+    data: {
+      username?: string;
+      email?: string;
+      phone?: string;
+      picture_url?: string | null;
+      picture_url_id?: string | null;
+      isVerified?: boolean;
+      role?: Role;
+    },
+  ) {
+    return prisma.user.update({
+      where: { id: userId },
+      data,
     });
   }
 }
