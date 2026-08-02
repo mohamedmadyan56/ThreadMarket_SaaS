@@ -187,17 +187,18 @@ enum BrandDocRejectionReason {
 }
 
 model BrandDocument {
-  id              String                  @id @default(uuid()) @map("document_id") @db.Uuid
-  brandId         String                  @map("brand_id") @db.Uuid
-  docType         String                  @map("doc_type") @db.VarChar(40)
-  fileUrl         String                  @map("file_url")
-  reviewedBy      String?                 @map("reviewed_by") @db.Uuid
-  reviewedAt      DateTime?               @map("reviewed_at") @db.Timestamptz
-  status          String                  @default("pending") @db.VarChar(20)
-  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  rejectionReason BrandDocRejectionReason
-  brand           Brand                   @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  reviewer        User?                   @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
+  id              String                   @id @default(uuid()) @map("document_id") @db.Uuid
+  brandId         String                   @map("brand_id") @db.Uuid
+  docType         BrandDocType             @map("doc_type")
+  fileUrl         String                   @map("file_url")
+  fileUrl_id      String                   @map("file_url_id")
+  reviewedBy      String?                  @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?                @map("reviewed_at") @db.Timestamptz
+  status          String                   @default("pending") @db.VarChar(20)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  rejectionReason BrandDocRejectionReason?
+  brand           Brand                    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reviewer        User?                    @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
 
   @@map("brand_documents")
 }

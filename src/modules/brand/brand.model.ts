@@ -1,4 +1,5 @@
 import prisma from "../../config/database";
+import { BrandDocType } from "../../generated/prisma/browser";
 
 class BrandModel {
     async findBrandWithDocuments(brandId: string) {
@@ -71,6 +72,22 @@ class BrandModel {
     isActive?: boolean;
   }) {
     return await prisma.brandBranch.create({ data });
+  }
+
+  async createBrandDocuments(
+    brandId: string,
+    data: { docType: BrandDocType; fileUrl: string; fileUrl_id: string }[],
+  ) {
+    return await prisma.brandDocument.createManyAndReturn({
+      data: [
+        ...data.map((doc) => ({
+          brandId,
+          docType: doc.docType,
+          fileUrl: doc.fileUrl,
+          fileUrl_id: doc.fileUrl_id,
+        })),
+      ],
+    });
   }
     async findApprovedBrandById(brandId: string) {
         return prisma.brand.findFirst({

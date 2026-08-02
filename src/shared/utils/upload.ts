@@ -6,26 +6,33 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-
-
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 
-
 const fileFilter = (req: any, file: any, cb: any) => {
-  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(null, false);
+    cb(new Error("Unsupported file type"), false);
   }
 };
 
-export const upload = multer({ storage, fileFilter });
-
-
-
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
+}); // Limit file size to 5MB
 
 export const removeFileFromDisk = (filePath: string) => {
   try {
@@ -33,5 +40,7 @@ export const removeFileFromDisk = (filePath: string) => {
     if (fs.existsSync(resolvedPath)) {
       fs.unlinkSync(resolvedPath);
     }
-  } catch (error) { console.log(error); }
+  } catch (error) {
+    console.log(error);
+  }
 };

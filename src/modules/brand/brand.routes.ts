@@ -6,10 +6,12 @@ import { upload } from "../../shared/utils/upload";
 import {
   brandVerificationStatus,
   createBrand,
+  createBrandDocument,
   updateBrandProfile,
 } from "./brand.controller";
 import {
   brandVerificationStatusSchema,
+  createBrandDocumentsSchema,
   createBrandSchema,
   updateBrandProfileSchema,
 } from "./brand.validators";
@@ -45,6 +47,14 @@ router.get("/:brandId/verification-status",
     authenticate,
     validate(brandVerificationStatusSchema),
     brandVerificationStatus,
+);
+
+router.post(
+  "/:brandId/documents",
+  authorize("admin", "brand"),
+  upload.array("documents"),
+  validate(createBrandDocumentsSchema),
+  createBrandDocument,
 );
 
 export default router;
