@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Jira Task: Get Current Profile - GET /users/me (شرح من الصفر)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Segoe UI",Tahoma,sans-serif;max-width:1100px;margin:40px auto;padding:30px;background:#f0f4f8;line-height:2;color:#2d3748}
+h1{color:#1a202c;border-bottom:4px solid #4299e1;padding-bottom:12px;font-size:26px;text-align:center;margin-bottom:10px}
+h2{color:#2b6cb0;margin-top:40px;border-right:5px solid #4299e1;padding-right:15px;font-size:22px}
+h3{color:#2c7a7b;margin-top:25px;font-size:18px}
+h4{color:#553c9a;margin-top:18px;font-size:16px}
+p{margin:12px 0;color:#4a5568}
+code{background:#edf2f7;padding:1px 6px;border-radius:4px;font-family:"Courier New",monospace;direction:ltr;font-size:0.9em}
+pre{background:#2d3748;color:#e2e8f0;padding:15px 20px;border-radius:8px;overflow-x:auto;direction:ltr;font-size:13px;line-height:1.6;margin:12px 0}
+table{width:100%;border-collapse:collapse;margin:15px 0}
+th,td{border:1px solid #cbd5e0;padding:10px 12px;text-align:right}
+th{background:#4299e1;color:white}
+tr:nth-child(even){background:#f7fafc}
+.note{background:#ebf8ff;border-right:5px solid #4299e1;padding:15px 20px;margin:15px 0;border-radius:6px}
+.warn{background:#fff5f5;border-right:5px solid #e53e3e;padding:15px 20px;margin:15px 0;border-radius:6px}
+.tip{background:#f0fff4;border-right:5px solid #38a169;padding:15px 20px;margin:15px 0;border-radius:6px}
+ul,ol{padding-right:25px;margin:10px 0}
+li{margin:6px 0;color:#4a5568}
+.badge{display:inline-block;background:#805ad5;color:#fff;border-radius:4px;padding:2px 10px;font-size:0.8em;direction:ltr}
+.flow{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0;padding:15px;background:#1a202c;border-radius:10px;color:white;direction:ltr;text-align:center}
+.flow span{background:#4299e1;padding:8px 16px;border-radius:6px;font-weight:600}
+.flow .arrow{background:none;color:#e2e8f0;font-size:1.5em}
+.step-num{display:inline-block;background:#4299e1;color:#fff;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;font-weight:700;margin-left:8px;direction:ltr}
+.file-box{background:#1a202c;color:#e2e8f0;padding:10px 15px;border-radius:6px;direction:ltr;text-align:left;font-family:"Courier New",monospace;font-size:13px;margin:10px 0}
+</style>
+</head>
+<body>
+<h1>Jira Task: Get Current Profile (GET /users/me)</h1>
+<p style="text-align:center"><span class="badge">GET /users/me</span> &nbsp; <span class="badge">Authentication: Required</span> &nbsp; <span class="badge">Roles: All</span></p>
+<p style="text-align:center">📘 شرح كامل من الصفر — حتطّبه بإيدك خطوة بخطوة</p>
+
+<h2>0. قبل أي حاجة: المواصفات المطلوبة من Jira</h2>
+<p>التاسك بيقول: أي مستخدم مسجّل دخول يبعث الـ Token بتاعه، وترجّع له البروفايل. مفيش Body ولا Params ولا Query — كل حاجة هتيجي من الـ Token.</p>
+<table>
+<tr><th>العنصر</th><th>التفاصيل</th></tr>
+<tr><td>HTTP Method</td><td><code>GET</code></td></tr>
+<tr><td>Endpoint</td><td><code>/users/me</code> (في مشروعنا: <code>/api/v1/users/me</code>)</td></tr>
+<tr><td>Headers</td><td><code>Authorization: Bearer &lt;accessToken&gt;</code></td></tr>
+<tr><td>Path / Query / Body</td><td>لا يوجد (None)</td></tr>
+<tr><td>Validation</td><td>الـ Token لازم يكون سليم</td></tr>
+<tr><td>Roles المصرح بيها</td><td>كل الأدوار (user, brand, admin, courier, delievryC)</td></tr>
+</table>
+<h3>الـ Response الناجح — 200</h3>
+<pre>{
+  "success": true,
+  "message": "Profile retrieved successfully",
+  "data": {
+    "id": "uuid",
+    "name": "Ahmed Hassan",
+    "email": "ahmed@example.com",
+    "phone": "+201001234567",
+    "role": "end_user"
+  }
+}</pre>
+<h3>الأخطاء الممكنة</h3>
+<table>
+<tr><th>الحالة</th><th>الكود</th><th>إمتى بتحصل</th></tr>
+<tr><td>Unauthorized</td><td>401</td><td>مفيش Token، أو الـ Token غلط/منتهي</td></tr>
+<tr><td>Not Found</td><td>404</td><td>الـ Token سليم بس المستخدم مش موجود في DB</td></tr>
+<tr><td>Internal Server Error</td><td>500</td><td>أي خطأ غير متوقع</td></tr>
+</table>
+
+<h2>1. أول حاجة: افهم المشروع اللي شغال فيه</h2>
+<p>المشروع ده اسمه <strong>Modular Monolith</strong> — يعني كل حاجة في سيرفر واحد بس، لكن مقسّمة على <strong>موديولات</strong> (كل موديول عبارة عن فولدر شغال على حاجة معينة). افتح فولدر <code>src</code> وشوف:</p>
+<div class="file-box">src/
+├── server.ts              ← نقطة البداية (بيشغّل السيرفر ويركّب الروتس)
+├── config/
+│   ├── env.ts             ← بيقرا الـ env (أسرار التطبيق)
+│   └── database.ts        ← اتصال الـ Prisma بقاعدة البيانات
+├── shared/                ← حاجات مشتركة بين كل الموديولات
+│   ├── middleware/
+│   │   ├── authenticate.ts ← بيتحقق من الـ Token (مهم جدًا للتاسك ده)
+│   │   ├── authorize.ts    ← بيسمح لأدوار معينة بس
+│   │   └── validate.ts     ← بيشيك على البيانات بـ Zod
+│   └── errors/AppError.ts  ← كلاس الخطأ الموحد
+└── modules/               ← الموديولات (كل واحد فولدر)
+    ├── auth/              ← تسجيل + دخول + OTP + Tokens
+    ├── brand/             ← البراندات
+    └── user/              ← ⭐ هتنشئها إنت بنفسك للتاسك ده</pre></div>
+<div class="tip"><strong>مبدأ مهم:</strong> كل موديول بيتكوّن من نفس الـ 4 ملفات:
+<code>*.model.ts</code> (قاعدة البيانات) → <code>*.service.ts</code> (منطق الأعمال) → <code>*.controller.ts</code> (استقبال الطلب والرد) → <code>*.routes.ts</code> (الروتس). وده النمط اللي بنتبعه في كل الموديولات.</div>
+
+<h2>2. افهم الـ User Model في قاعدة البيانات</h2>
+<p>فتح الملف <code>prisma/schema.prisma</code> — كل مستخدم في الجدول <code>User</code>:</p>
+<pre>model User {
+  id             String      @id @default(uuid())
+  username       String
+  phone          String?     @unique
+  email          String      @unique
+  role           Role        @default(user)   // enum: user, brand, admin, delievryC, courier
+  password       String
+  picture_url    String?
+  otp            String?
+  otp_expiration DateTime?
+  otp_purpose    otpPurpose?
+  isVerified     Boolean     @default(false)
+  isBanned       Boolean     @default(false)
+  refreshToken   String?
+  created_At     DateTime    @default(now())
+  updated_At     DateTime    @default(now())
+  // ... وأعمدة تانية
+}</pre>
+<div class="note"><strong>خد بالك من 3 حاجات:</strong>
+<ul>
+<li>الـ Jira عايز <code>name</code>، بس الجدول فيه <code>username</code> — يبقى هنعمل mapping لما نرجع الرد.</li>
+<li>الجدول فيه <code>password</code> و<code>otp</code> و<code>refreshToken</code> — دي بيانات <strong>حساسة</strong> ممنوع نرجعها أبدًا. هنستخدم <code>select</code> عشان نجيب اللي محتاجينه بس.</li>
+<li><code>role</code> من نوع enum بقيم محددة (user, brand, admin, delievryC, courier).</li>
+</ul></div>
+
+<h2>3. افهم الـ Token بيوصل إزاي ليك</h2>
+<p>لما المستخدم يعمل <strong>Login</strong>، الـ سيرفر بيرجّع حاجتين:</p>
+<ul>
+<li><code>accessToken</code> → في الـ Response Body، والـ Frontend بيحطه في Header اسمه <code>Authorization: Bearer ...</code></li>
+<li><code>refreshToken</code> → في httpOnly Cookie (عشان يجدد الـ accessToken لما يخلص).</li>
+</ul>
+<p>الـ <code>accessToken</code> بيتولّد في <code>src/modules/auth/token.service.ts</code> من غير <code>id</code> بس:</p>
+<pre>generateAccessToken({ id: user.id })   // البايلواد فيه id المستخدم فقط</pre>
+<div class="note">يعني لما الـ <code>authenticate</code> يعمل <code>jwt.verify()</code> على الـ Token، هيستخرج <code>req.user = { id: user.id }</code>. وعشان نجيب باقي بيانات المستخدم (الاسم، الإيميل...)، هنرجع لقاعدة البيانات بـ الـ id ده.</div>
+
+<h2>4. افهم الـ authenticate middleware (مهم جدًا)</h2>
+<p>المكان: <code>src/shared/middleware/authenticate.ts</code>. وظيفته: يقرا الـ Token من الـ Header، يتحقق منه، ولو سليم يحط <code>req.user</code> ويكمّل الطلب.</p>
+<pre>const authenticate = asyncHandler(async (req, _res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];  // ياخد الجزء التاني بعد "Bearer"
+  if (!token) throw new AppError("No token provided", 401);
+
+  try {
+    const decoded = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!);
+    (req as any).user = decoded;   // ← req.user = { id: "..." }
+    next();
+  } catch {
+    throw new AppError("Invalid or expired token", 401);
+  }
+});</pre>
+<div class="warn"><strong>Bug لقيناه وإتصلّح (لازم تعرفه):</strong> السطر كان مكتوب <code>split("")[1]</code> مش <code>split(" ")[1]</code>.
+<ul>
+<li><code>split("")</code> → بيقطع السطر على كل حرف! يعني لو الـ Header <code>Bearer abc</code> هياخد الحرف الثاني <code>a</code> → الـ verify هيفشل.</li>
+<li><code>split(" ")</code> → بيقطع على المسافة ويعطي <code>["Bearer", "abc"]</code>، فناخد <code>[1]</code> = <code>abc</code> وهو الـ Token الحقيقي. ✅</li>
+</ul>
+لو الـ bug ده موجود، أي endpoint محمي هيبوظ. متنساش.</div>
+
+<h2>5. رحلة الطلب من الأول لآخر (افهم دي الأول)</h2>
+<div class="flow">
+<span>1. Client</span>
+<span class="arrow">→</span>
+<span>2. GET /api/v1/users/me</span>
+<span class="arrow">→</span>
+<span>3. authenticate</span>
+<span class="arrow">→</span>
+<span>4. Controller</span>
+<span class="arrow">→</span>
+<span>5. Service</span>
+<span class="arrow">→</span>
+<span>6. Model → DB</span>
+<span class="arrow">→</span>
+<span>7. Response 200</span>
+</div>
+<ol>
+<li>الـ Client يبعث الطلب ومعاه <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+<li>الطلب يمر على <code>authenticate</code> اللي بيخزّن <code>req.user = { id }</code>.</li>
+<li>الـ Controller ياخد <code>req.user.id</code> وينادي الـ Service.</li>
+<li>الـ Service يستدعي الـ Model عشان يجيب بيانات المستخدم من DB.</li>
+<li>الـ Model يعمل Query آمنة (select) على <code>prisma.user</code>.</li>
+<li>لو مش موجود → <strong>404</strong>. لو موجود → يرجع الـ 200 بالبروفايل.</li>
+</ol>
+
+<h2>6. الخطوات العملية — طبّق بالترتيب ده</h2>
+
+<h3>الخطوة 0: شغّل المشروع وتأكد إنه شغال</h3>
+<ol>
+<li>مكّن الـ env: اتأكد إن ملف <code>.env</code> موجود فيه <code>DATABASE_URL</code> وأسرار الـ JWT.</li>
+<li>جهّز الـ Prisma: <code>npm run generate</code> (لو غيرت في السكيما) و <code>npm run migrate</code>.</li>
+<li>شغّل السيرفر: <code>npm run dev</code>.</li>
+<li>جرب: افتح <code>http://localhost:4000/api/v1/auth/login</code> على Postman — ليه؟ عشان تجيب accessToken عشان تجرب التاسك.</li>
+</ol>
+
+<h3>الخطوة 1: متنساش إصلاح authenticate.ts</h3>
+<p>اتأكد إن السطر في <code>src/shared/middleware/authenticate.ts</code> بقى:</p>
+<pre>const token = req.headers.authorization?.split(" ")[1];</pre>
+
+<h3>الخطوة 2: أنشئ فولدر الموديول الجديد</h3>
+<div class="file-box">src/modules/user/
+├── user.model.ts
+├── user.service.ts
+├── user.controller.ts
+└── user.routes.ts</div>
+
+<h3>الخطوة 3: user.model.ts — الجلب الآمن من قاعدة البيانات</h3>
+<p>يعمل Query بـ <code>select</code> عشان يرجع الحقول الآمنة بس (من غير password / otp / refreshToken).</p>
+<pre>import prisma from "../../config/database";
+
+class UserModel {
+  async findProfileById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        phone: true,
+        role: true,
+      },
+    });
+  }
+}
+
+export const userModel = new UserModel();</pre>
+<div class="tip"><strong>ليه <code>select</code>؟</strong> لو سبتها من غير select، الـ findUnique هيرجع كل الأعمدة بما فيهم <code>password</code> و<code>otp</code> و<code>refreshToken</code> — كارثة أمنية. الـ <code>select</code> بيدّينا اللي محتاجينه بس.</div>
+
+<h3>الخطوة 4: user.service.ts — منطق الأعمال</h3>
+<p>اللي بيمسك الـ Model، يعمل mapping، ويرمي 404 لو مش موجود.</p>
+<pre>import { userModel } from "./user.model";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+class UserService {
+  async getCurrentUser(userId: string) {
+    const user = await userModel.findProfileById(userId);
+    if (!user) throw new AppError("User not found", StatusCodes.NOT_FOUND);
+
+    return {
+      id: user.id,
+      name: user.username,   // mapping: username في DB ← name في الرد
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    };
+  }
+}
+
+export const userService = new UserService();</pre>
+<div class="note"><strong>ليه إعادة تشكيل الـ Object؟</strong> جدول الـ DB فيه <code>username</code>، وجيرا عايز <code>name</code>. فبنرجّع object جديد بنفس شكل المواصفات بالظبط. ولو المستخدم اتوجدش، نرمي <code>AppError</code> بـ 404.</div>
+
+<h3>الخطوة 5: user.controller.ts — استقبال الطلب والرد</h3>
+<pre>import { Request, Response } from "express";
+import { userService } from "./user.service";
+import { StatusCodes } from "http-status-codes";
+import { asyncHandler } from "../../shared/utils/asyncHandler";
+import AppError from "../../shared/errors/AppError";
+
+export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;   // ← جاية من authenticate
+  if (!userId) {
+    throw new AppError("Not authenticated", StatusCodes.UNAUTHORIZED);
+  }
+
+  const profile = await userService.getCurrentUser(userId);
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    message: "Profile retrieved successfully",
+    data: profile,
+  });
+});</pre>
+<div class="tip"><strong>ليه asyncHandler؟</strong> هو اختصار بيلفّ على الـ handler ويمسك أي error مرميّ داخله ويوصله للـ error handler في <code>server.ts</code>. من غيرها، أي throw هيتعلّق ويموت السيرفر.</div>
+
+<h3>الخطوة 6: user.routes.ts — الروت</h3>
+<p>الروت الوحيد <code>GET /me</code> مع <code>authenticate</code> (وبس — كل الأدوار مصرح بيها فمفيش <code>authorize</code>).</p>
+<pre>import { Router } from "express";
+import authenticate from "../../shared/middleware/authenticate";
+import { getCurrentUser } from "./user.controller";
+
+const router = Router();
+
+router.get("/me", authenticate, getCurrentUser);
+
+export default router;</pre>
+
+<h3>الخطوة 7: ركّب الروت في server.ts</h3>
+<p>افتح <code>src/server.ts</code>، أضف استيراد وسطر تركيب:</p>
+<pre>import userRouter from "./modules/user/user.routes";
+
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/brands", brandRouter);
+app.use("/api/v1/users", userRouter);   // ← الجديد
+</pre>
+<div class="note"><strong>ليه الـ endpoint بقى <code>/api/v1/users/me</code>؟</strong> لإن جيرا كتب <code>/users/me</code> والمشروع بيفضّل كل حاجة تحت <code>/api/v1</code>. فـ <code>app.use("/api/v1/users", ...)</code> + <code>router.get("/me")</code> = <code>GET /api/v1/users/me</code>.</div>
+
+<h3>الخطوة 8: شغّل والتأكد من غير أخطاء</h3>
+<pre>npx tsc --noEmit   // لو ما فيش أخطاء تيبسكريبت، تمام
+npm run dev</pre>
+
+<h2>7. التجربة (Postman)</h2>
+<ol>
+<li>اعمل Login: <code>POST http://localhost:4000/api/v1/auth/login</code> ببيانات مستخدم موجود في الـ DB.</li>
+<li>خد الـ <code>accessToken</code> من الـ Response.</li>
+<li>اعمل Request جديد: <code>GET http://localhost:4000/api/v1/users/me</code>.</li>
+<li>في تبويب Authorization → اختار <code>Bearer Token</code> → الصق الـ Token.</li>
+<li>Send → يطلع 200 والبروفايل.</li>
+</ol>
+<p>أو بـ curl:</p>
+<pre>curl -X GET http://localhost:4000/api/v1/users/me \
+  -H "Authorization: Bearer &lt;accessToken&gt;"</pre>
+
+<h2>8. حالات الاختبار (نفّذها كلها)</h2>
+<table>
+<tr><th>الحالة</th><th>المتوقع</th></tr>
+<tr><td>Token سليم + مستخدم موجود</td><td>200 + <code>{id, name, email, phone, role}</code></td></tr>
+<tr><td>من غير Header Authorization</td><td>401 "No token provided"</td></tr>
+<tr><td>Token غلط أو منتهي</td><td>401 "Invalid or expired token"</td></tr>
+<tr><td>Token سليم لكن المستخدم اتمسح</td><td>404 "User not found"</td></tr>
+<tr><td>مستخدم بدور brand أو admin</td><td>200 — كل الأدوار مصرح بيها</td></tr>
+</table>
+
+<h2>9. أخطاء شائعة وقصّها</h2>
+<table>
+<tr><th>المشكلة</th><th>السبب والحل</th></tr>
+<tr><td>كل الطلبات بترجع 401</td><td>الـ bug بتاع <code>split("")</code> في authenticate.ts — اعدله لـ <code>split(" ")</code></td></tr>
+<tr><td>بيطلع 500 بدل 404</td><td>إما <code>asyncHandler</code> مش مكشوف، أو الـ model بيرجّع null وانت بتستخدمه كأنه object</td></tr>
+<tr><td>الـ password ظاهر في الرد</td><td>نسيت <code>select</code> في الـ model — اكتب الحقول اللي محتاجها صراحة</td></tr>
+<tr><td>الاسم ناقص/اسمه username</td><td>الـ mapping في service نسيت تعمله — <code>name: user.username</code></td></tr>
+<tr><td>الروت مش لاقي / 404</td><td>اتأكد إنك ركّبت <code>userRouter</code> في server.ts قبل الـ 404 handler</td></tr>
+</table>
+
+<div class="tip"><strong>الخلاصة النهائية:</strong> التاسك بسيط — موديول جديد من 4 ملفات + سطر تركيب في server.ts. الرحلة هي:
+<code>req.user.id</code> ← Service ← Model (select آمن) ← mapping ← <code>200</code>.
+مفيش Body ولا Params ولا authorize، لأن كل الأدوار مصرح بيها.</div>
+
+</body>
+</html>
