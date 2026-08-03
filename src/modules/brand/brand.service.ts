@@ -18,29 +18,7 @@ class BrandService {
         };
     }
 
-    async softDeleteCategory(brandId: string, categoryId: string, userId: string) {
-        const brand = await brandModel.findBrandById(brandId);
-        if (!brand) throw new AppError("Brand not found",404);
-
-        if (brand.userId !== userId) {
-            throw new AppError("You are not authorized to manage this brand", 403);
-        }
-
-        const category = await brandModel.findCategoryById(categoryId);
-        if (!category) throw new AppError("Category not found", 404);
-
-        const activeProducts = await brandModel.countActiveProductsInCategory(brandId, categoryId);
-        if (activeProducts > 0) {
-            throw new AppError(
-                "Cannot delete category: active products depend on it",
-                409,
-            );
-        }
-
-        await brandModel.softDeleteCategory(categoryId);
-
-        return {};
-    }
+  
 
     async getBrandVerificationStatus(brandId: string, userId: string, role: string) {
         const brand = await brandModel.findBrandWithDocuments(brandId);
