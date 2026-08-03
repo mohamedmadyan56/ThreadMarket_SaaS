@@ -2,44 +2,48 @@ import { BrandDocType } from "../../generated/prisma/browser";
 import { brandModel } from "./brand.model";
 import AppError from "../../shared/errors/AppError";
 import { StatusCodes } from "http-status-codes";
-import { uploadToCloudinary } from "../../shared/utils/cloudinary";
+import {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+} from "../../shared/utils/cloudinary";
+import { removeFileFromDisk } from "../../shared/utils/upload";
 import { ENV } from "../../config/env";
 import axios from "axios";
+
 class BrandService {
-  // Create Brand With All Details and With Main Branch Location
   async createBrand(data: { userId: string; name: string; logoUrl?: string }) {
-    // Check if the user has already created brand
     const userBrand = await brandModel.getUserBrand(data.userId);
-    if (userBrand)
+    if (userBrand) {
       throw new AppError(
-        "You'have already Created Brand",
+        "You have already created a brand",
         StatusCodes.BAD_REQUEST,
       );
-    // Check if the brand name is existed
-    const brandName = await brandModel.getBrandByCondition({ name: data.name });
-    if (brandName)
-      throw new AppError("Brand Name is existed", StatusCodes.BAD_REQUEST);
+    }
 
-    // Upload Logo to cloudinary and get the url
-    let logoUrl = null;
-    let logoUrl_id = null;
-    if (logoUrl) {
+    const brandName = await brandModel.getBrandByCondition({ name: data.name });
+    if (brandName) {
+      throw new AppError("Brand name already exists", StatusCodes.BAD_REQUEST);
+    }
+
+    let logoUrl: string | null = null;
+    let logoUrl_id: string | null = null;
+
+    if (data.logoUrl) {
       const { secure_url, public_id } = await uploadToCloudinary(
-        logoUrl,
+        data.logoUrl,
         "brand-logos",
       );
       logoUrl = secure_url;
       logoUrl_id = public_id;
     }
 
-    // Perpare data for brand creation
     const brandData = {
       userId: data.userId,
       name: data.name,
-      logoUrl,
-      logoUrl_id,
+      logoUrl: logoUrl ?? undefined,
+      logoUrl_id: logoUrl_id ?? undefined,
     };
-    // Create brand
+
     const brand = await brandModel.createBrand(
       brandData as {
         userId: string;
@@ -49,14 +53,97 @@ class BrandService {
       },
     );
 
-    if (!brand)
+    if (!brand) {
       throw new AppError(
-        "Brand Creation Failed",
+        "Brand creation failed",
         StatusCodes.INTERNAL_SERVER_ERROR,
       );
+    }
 
     return brand;
   }
+
+  async updateBrandProfile(
+    userId: string,
+    brandId: string,
+    data: {
+      name?: string;
+      isActive?: boolean;
+      logoFilePath?: string;
+    },
+  ) {
+    const brand = await brandModel.findBrandById(brandId);
+    if (!brand) {
+      throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+    }
+
+    if (brand.userId !== userId) {
+      throw new AppError("Unauthorized", StatusCodes.FORBIDDEN);
+    }
+
+    const updateData: {
+      name?: string;
+      isActive?: boolean;
+      logoUrl?: string | null;
+      logoUrl_id?: string | null;
+    } = {};
+
+    if (typeof data.name === "string") {
+      const trimmedName = data.name.trim();
+      if (!trimmedName) {
+        throw new AppError(
+          "Brand name cannot be empty",
+          StatusCodes.BAD_REQUEST,
+        );
+      }
+
+      const nameExists = await brandModel.getBrandByCondition({
+        name: trimmedName,
+        NOT: { id: brandId },
+      });
+
+      if (nameExists) {
+        throw new AppError(
+          "Brand name already exists",
+          StatusCodes.BAD_REQUEST,
+        );
+      }
+
+      updateData.name = trimmedName;
+    }
+
+    if (typeof data.isActive === "boolean") {
+      updateData.isActive = data.isActive;
+    }
+
+    if (data.logoFilePath) {
+      try {
+        const { secure_url, public_id } = await uploadToCloudinary(
+          data.logoFilePath,
+          "brand-logos",
+        );
+        updateData.logoUrl = secure_url;
+        updateData.logoUrl_id = public_id;
+
+        if (brand.logoUrl_id) {
+          try {
+            await deleteFromCloudinary(brand.logoUrl_id);
+          } catch (error) {
+            console.warn("Failed to delete previous brand logo", error);
+          }
+        }
+      } finally {
+        removeFileFromDisk(data.logoFilePath);
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new AppError("No changes provided", StatusCodes.BAD_REQUEST);
+    }
+
+    return brandModel.updateBrand(brandId, updateData);
+  }
+
   async getBrandVerificationStatus(
     brandId: string,
     userId: string,
@@ -85,9 +172,7 @@ class BrandService {
     };
   }
 
-  // To-Do => Customize Get Location Service to get the all location details that are missed
   async getLocation(longitude: number, latitude: number) {
-    // Implementation for getting location details
     try {
       const response = await axios.get(
         `https://geocode.googleapis.com/v4/geocode/location?location.latitude=${latitude}&location.longitude=${longitude}&key=${ENV.Google_Maps_Key}`,
@@ -128,17 +213,21 @@ class BrandService {
       postalCode: string;
       locationGranularity: string;
     },
+    isMain?: boolean,
+    isActive?: boolean,
   ) {
     const branchLocation = await brandModel.CreateBrandLocation({
       brandId,
       name: branchName,
       ...locationDetails,
+      isMain: isMain || false,
     });
-    if (!branchLocation)
+    if (!branchLocation) {
       throw new AppError(
         "Failed to create branch location",
         StatusCodes.INTERNAL_SERVER_ERROR,
       );
+    }
     return branchLocation;
   }
 }

@@ -8,9 +8,32 @@ class BrandModel {
     });
   }
 
-  // Create Brand
-  async createBrand(data: { userId: string; name: string; logoUrl?: string }) {
+  async findBrandById(brandId: string) {
+    return prisma.brand.findUnique({ where: { id: brandId as any } });
+  }
+
+  async createBrand(data: {
+    userId: string;
+    name: string;
+    logoUrl?: string;
+    logoUrl_id?: string;
+  }) {
     return await prisma.brand.create({ data });
+  }
+
+  async updateBrand(
+    brandId: string,
+    data: {
+      name?: string;
+      isActive?: boolean;
+      logoUrl?: string | null;
+      logoUrl_id?: string | null;
+    },
+  ) {
+    return prisma.brand.update({
+      where: { id: brandId as any },
+      data,
+    });
   }
 
   async getUserBrand(userId: string) {
@@ -44,6 +67,8 @@ class BrandModel {
     country: string;
     postalCode: string;
     locationGranularity: string;
+    isMain?: boolean;
+    isActive?: boolean;
   }) {
     return await prisma.brandBranch.create({ data });
   }

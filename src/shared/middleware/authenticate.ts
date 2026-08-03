@@ -15,6 +15,7 @@ const authenticate = asyncHandler(
 
     try {
       const decoded = jwt.verify(token, ENV.ACCESS_TOKEN_SECRET!) as JwtPayload;
+      console.log("Decoded Token:", decoded); // Debugging line to check the decoded token
       (req as any).user = decoded;
       next();
     } catch {
