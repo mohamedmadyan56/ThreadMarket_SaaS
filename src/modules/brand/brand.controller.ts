@@ -4,7 +4,7 @@ import { asyncHandler } from "../../shared/utils/asyncHandler";
 import AppError from "../../shared/errors/AppError";
 import { authModel } from "../auth/auth.model";
 import { uploadToCloudinary } from "../../shared/utils/cloudinary";
-import { createBrandDocumentsSchema } from "./brand.validators";
+import { StatusCodes } from "http-status-codes";
 
 export const createBrand = asyncHandler(async (req: any, res: Response) => {
   const {
@@ -41,17 +41,21 @@ export const createBrand = asyncHandler(async (req: any, res: Response) => {
     locationDetails,
     true, // isMain
   );
-export const getPublicBrandProfile = asyncHandler(async (req: Request, res: Response) => {
+});
+
+export const getPublicBrandProfile = asyncHandler(
+  async (req: Request, res: Response) => {
     const { brandId } = req.params as { brandId: string };
 
     const result = await brandService.getPublicBrandProfile(brandId);
 
     return res.status(200).json({
-        success: true,
-        message: "Brand profile retrieved successfully",
-        data: result,
+      success: true,
+      message: "Brand profile retrieved successfully",
+      data: result,
     });
-});
+  },
+);
 
 export const updateBrandProfile = asyncHandler(
   async (req: Request, res: Response) => {
@@ -84,7 +88,6 @@ export const updateBrandProfile = asyncHandler(
 
 export const brandVerificationStatus = asyncHandler(
   async (req: Request, res: Response) => {
-export const brandVerificationStatus = asyncHandler(async (req: Request, res: Response) => {
     const { brandId } = req.params as { brandId: string };
     const user = (req as any).user;
 

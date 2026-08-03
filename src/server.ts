@@ -7,7 +7,7 @@ import { ENV } from "./config/env";
 import { connectDB } from "./config/database";
 import authRouter from "./modules/auth/auth.routes";
 import brandRouter from "./modules/brand/brand.routes";
-import usersRouter from "./modules/users/users.routes";
+import usersRouter from "./modules/user/user.routes";
 import categoryRouter from "./modules/category/category.routes";
 import { StatusCodes } from "http-status-codes";
 import userRouter from "./modules/user/user.routes";
