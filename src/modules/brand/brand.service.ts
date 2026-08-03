@@ -23,9 +23,10 @@ class BrandService {
     // Upload Logo to cloudinary and get the url
     let logoUrl = null;
     let logoUrl_id = null;
-    if (logoUrl) {
+
+    if (data.logoUrl) {
       const { secure_url, public_id } = await uploadToCloudinary(
-        logoUrl,
+        data.logoUrl,
         "brand-logos",
       );
       logoUrl = secure_url;
