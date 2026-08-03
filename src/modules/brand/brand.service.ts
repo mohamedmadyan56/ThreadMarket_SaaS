@@ -230,6 +230,29 @@ class BrandService {
     }
     return branchLocation;
   }
+
+  async createBrandDocuments(
+    brandId: string,
+    data: { docType: BrandDocType; fileUrl: string; fileUrl_id: string }[],
+  ) {
+    const brand = await brandModel.findBrandById(brandId);
+    if (!brand) {
+      throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+    }
+
+    const brandDocument = await brandModel.createBrandDocuments(brandId, data);
+    if (!brandDocument || brandDocument.length === 0) {
+      throw new AppError(
+        "Failed to create brand document",
+        StatusCodes.INTERNAL_SERVER_ERROR,
+      );
+    }
+    return brandDocument;
+  }
+
+  async getBrandByCondition(where: any) {
+    return await brandModel.getBrandByCondition(where);
+  }
 }
 
 export const brandService = new BrandService();

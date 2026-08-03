@@ -58,7 +58,7 @@ CREATE TABLE "brands" (
     "logo_url" TEXT,
     "logo_url_id" TEXT,
     "followers_count" INTEGER NOT NULL DEFAULT 0,
-    "viewed_times" BIGINT NOT NULL DEFAULT 0,
+    "viewed_times" INTEGER NOT NULL DEFAULT 0,
     "is_promoted" BOOLEAN NOT NULL DEFAULT false,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -96,13 +96,14 @@ CREATE TABLE "brand_branches" (
 CREATE TABLE "brand_documents" (
     "document_id" UUID NOT NULL,
     "brand_id" UUID NOT NULL,
-    "doc_type" VARCHAR(40) NOT NULL,
+    "doc_type" "BrandDocType" NOT NULL,
     "file_url" TEXT NOT NULL,
+    "file_url_id" TEXT NOT NULL,
     "reviewed_by" UUID,
     "reviewed_at" TIMESTAMPTZ,
     "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "rejectionReason" "brand_doc_rejection_reason" NOT NULL,
+    "rejectionReason" "brand_doc_rejection_reason",
 
     CONSTRAINT "brand_documents_pkey" PRIMARY KEY ("document_id")
 );

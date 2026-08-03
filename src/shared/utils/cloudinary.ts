@@ -4,17 +4,21 @@ import AppError from "../errors/AppError";
 import path from "path";
 
 type ResourceType = "image" | "video" | "raw" | "auto";
-
+console.log(
+  ENV.CLOUDINARY_NAME,
+  ENV.CLOUDINARY_API_KEY,
+  ENV.CLOUDINARY_API_SECRET,
+);
 cloudinary.config({
   cloud_name: ENV.CLOUDINARY_NAME,
-  api_key:    ENV.CLOUDINARY_API_KEY,
+  api_key: ENV.CLOUDINARY_API_KEY,
   api_secret: ENV.CLOUDINARY_API_SECRET,
 });
 
 // Upload from file path
 export const uploadToCloudinary = async (
   filePath: string,
-  folder: string
+  folder: string,
 ): Promise<UploadApiResponse> => {
   if (!filePath) {
     throw new AppError("File path is required", 400);
@@ -23,20 +27,19 @@ export const uploadToCloudinary = async (
   const filePathResolved = path.resolve(filePath);
 
   try {
-    const result = await cloudinary.uploader.upload(filePathResolved, { folder });
+    const result = await cloudinary.uploader.upload(filePathResolved, {
+      folder,
+    });
     return result;
   } catch (error: any) {
-    throw new AppError(
-      error?.message || "Cloudinary upload failed",
-      500
-    );
+    throw new AppError(error?.message || "Cloudinary upload failed", 500);
   }
 };
 
 // Upload from Buffer (MemoryStorage)
 export const uploadBufferToCloudinary = async (
   buffer: Buffer,
-  folder: string
+  folder: string,
 ): Promise<UploadApiResponse> => {
   return new Promise<UploadApiResponse>((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -47,7 +50,7 @@ export const uploadBufferToCloudinary = async (
         } else {
           resolve(result);
         }
-      }
+      },
     );
     stream.end(buffer);
   });
@@ -63,12 +66,11 @@ export const deleteFromCloudinary = async (
   }
 
   try {
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type });
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type,
+    });
     return result;
   } catch (error: any) {
-    throw new AppError(
-      error?.message || "Cloudinary delete failed",
-      500
-    );
+    throw new AppError(error?.message || "Cloudinary delete failed", 500);
   }
 };

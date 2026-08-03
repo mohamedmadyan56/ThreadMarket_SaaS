@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BrandDocType } from "../../generated/prisma/enums";
 
 const booleanLikeSchema = z.preprocess((value) => {
   if (typeof value === "string") {
@@ -29,3 +30,24 @@ export const updateBrandProfileSchema = z.object({
     .optional(),
   isActive: booleanLikeSchema,
 });
+
+const brandDocTypeValues = Object.values(BrandDocType) as [string, ...string[]];
+
+const normalizeDocTypes = (value: unknown) => {
+  if (typeof value === "string") return JSON.parse(value);
+  if (Array.isArray(value)) return value;
+  return value;
+};
+
+export const createBrandDocumentsSchema = z
+  .object({
+    brandId: z.string().uuid({ message: "Invalid brand ID format" }),
+    docTypes: z.preprocess(
+      normalizeDocTypes,
+      z
+        .array(z.enum(brandDocTypeValues, { message: "Invalid document type" }))
+        .nonempty("At least one document type is required")
+        .min(1, "At least one document type is required"),
+    ),
+  })
+  .transform((data) => ({ ...data, docTypes: data.docTypes ?? [] }));
