@@ -6,6 +6,7 @@ export const brandVerificationStatusSchema = z.object({
 
 export const createBrandSchema = z.object({
   name: z.string().nonempty("Brand name is required"),
+  logoUrl: z.string().url("Invalid logo URL format"),
   location: z.object({
     latitude: z.number(),
     longitude: z.number(),
