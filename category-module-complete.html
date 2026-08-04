@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الكود الكامل لوحدة Category — ThreadMarket SaaS</title>
+<style>
+@media print{body{font-size:11pt}.code-block{font-size:10pt;white-space:pre-wrap;word-wrap:break-word}.card{break-inside:avoid;page-break-inside:avoid}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f4f6f9;color:#333;line-height:1.8;padding:25px}
+.container{max-width:1100px;margin:0 auto}
+.header{text-align:center;margin-bottom:35px;padding:30px;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-radius:12px;color:#fff}
+.header h1{font-size:28px;margin-bottom:6px}
+.header p{opacity:.85;font-size:14px}
+.toc{background:#fff;border-radius:10px;padding:22px 28px;margin-bottom:30px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.toc h2{color:#2c3e50;margin-bottom:12px;font-size:19px;border-bottom:2px solid #3498db;padding-bottom:6px}
+.toc ol{padding-right:22px}.toc ol li{margin-bottom:6px;font-size:14px}
+.toc ol li a{color:#2980b9;text-decoration:none;font-weight:500}
+h2.section{color:#2c3e50;font-size:22px;margin:35px 0 15px;padding-bottom:8px;border-bottom:3px solid #3498db}
+h3{color:#34495e;font-size:16px;margin:14px 0 8px}
+.card{background:#fff;border-radius:10px;padding:22px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.06);border-right:5px solid #3498db}
+.card.warn{border-right-color:#e74c3c}
+.card.ok{border-right-color:#27ae60}
+.card.info{border-right-color:#f39c12}
+.card p,.card li{font-size:14px;color:#555}
+.card ul,.card ol{padding-right:20px;margin-top:6px}
+.card ul li,.card ol li{margin-bottom:4px}
+.code-block{background:#0d1117;color:#c9d1d9;padding:16px;border-radius:8px;font-family:'Fira Code','Courier New',monospace;font-size:12.5px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.55;direction:ltr;text-align:left;border:1px solid #21262d;tab-size:2}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid #eee}
+th{background:#f8f9fa;color:#2c3e50;font-weight:600}
+.file-header{background:linear-gradient(90deg,#1e3a5f,#2c5282);color:#fff;padding:12px 20px;border-radius:8px 8px 0 0;font-size:15px;font-weight:600;margin-bottom:-1px}
+.file-header .path{opacity:.7;font-size:12px;font-weight:400;margin-right:10px}
+.note{background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px 14px;margin:10px 0;font-size:13px;color:#92400e}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+<h1>الكود الكامل لوحدة Category</h1>
+<p>ThreadMarket SaaS — كل الملفات مُصححة ومُحسّنة مع الشرح بالعربي</p>
+</div>
+
+<div class="toc">
+<h2>فهرس المحتويات</h2>
+<ol>
+<li><a href="#prisma">مخطط Prisma Schema</a></li>
+<li><a href="#model">category.model.ts — نموذج البيانات</a></li>
+<li><a href="#service">category.service.ts — طبقة الخدمات</a></li>
+<li><a href="#validators">category.validators.ts — التحقق من المدخلات</a></li>
+<li><a href="#controller">category.controller.ts — متحكم الطلبات</a></li>
+<li><a href="#routes">category.routes.ts — مسارات API</a></li>
+<li><a href="#diff">ملخص كل التعديلات</a></li>
+</ol>
+</div>
+
+<h2 class="section" id="prisma">1. مخطط Prisma Schema</h2>
+<div class="card info">
+<h3>الملف: prisma/schema.prisma</h3>
+<div class="code-block">model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @map("category_name")
+  description String
+  media       Json
+  ishidden    Boolean   @default(false)
+  Products    Product[]
+  createdAt   DateTime  @default(now())
+  updateAt    DateTime  @default(now())
+}</div>
+<table>
+<tr><th>الحقل</th><th>النوع</th><th>الوصف</th></tr>
+<tr><td><code>id</code></td><td>UUID</td><td>المعرّف الفريد — يُولّد تلقائياً</td></tr>
+<tr><td><code>name</code></td><td>String (unique)</td><td>اسم التصنيف — فريد</td></tr>
+<tr><td><code>description</code></td><td>String</td><td>وصف التصنيف</td></tr>
+<tr><td><code>media</code></td><td>Json</td><td>الوسائط (صور/أيقونات)</td></tr>
+<tr><td><code>ishidden</code></td><td>Boolean</td><td>هل التصنيف مخفي — الافتراضي false</td></tr>
+<tr><td><code>Products</code></td><td>Relation[]</td><td>علاقة one-to-many مع المنتجات</td></tr>
+<tr><td><code>createdAt</code></td><td>DateTime</td><td>تاريخ الإنشاء</td></tr>
+<tr><td><code>updateAt</code></td><td>DateTime</td><td>آخر تحديث</td></tr>
+</table>
+</div>
+
+<h2 class="section" id="model">2. category.model.ts — نموذج البيانات</h2>
+<div class="file-header">category.model.ts <span class="path">src/modules/category/category.model.ts</span></div>
+<div class="card warn" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الحالي (الخاطئ)</h3>
+<div class="code-block">import prisma from "../../config/database";
+
+class categoryModel {
+  async getCategories(filter: { search: string; skip?: number; take?: number; }) {
+    return await prisma.category.findMany({
+      where: {
+        OR: [
+          { name: { search: filter.search } },
+          { description: { search: filter.search } },
+        ]
+      }
+      skip: filter.skip,
+      take: filter.take,
+    })
+  }
+}
+export const category = new categoryModel();</div>
+<h3>المشاكل:</h3>
+<ul>
+<li>اسم الكلاس categoryModel — يجب أن يكون CategoryModel</li>
+<li>لا يوجد TypeScript interfaces</li>
+<li>دالة واحدة فقط — لا يوجد CRUD كامل</li>
+<li>لا يوجد try-catch</li>
+<li>لا يوجد تصفية حسب isHidden</li>
+<li>لا يوجد ترتيب (ordering)</li>
+<li>لا يُرجع pagination metadata</li>
+</ul>
+</div>
+
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود المُصحح الكامل</h3>
+<div class="code-block">import prisma from "../../config/database";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import { Prisma } from "@prisma/client";
+
+// ─── Interfaces ───
+
+export interface CategoryFilter {
+  search?: string;
+  skip?: number;
+  take?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  isHidden?: boolean;
+}
+
+export interface CategoryResult&lt;T&gt; {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CreateCategoryInput {
+  name: string;
+  description: string;
+  media?: any;
+}
+
+export interface UpdateCategoryInput {
+  name?: string;
+  description?: string;
+  media?: any;
+  isHidden?: boolean;
+}
+
+// ─── Model ───
+
+class CategoryModel {
+
+  private buildWhereClause(filter: CategoryFilter): Prisma.CategoryWhereInput {
+    const where: Prisma.CategoryWhereInput = {};
+
+    if (filter.isHidden === undefined || filter.isHidden === false) {
+      where.ishidden = false;
+    }
+
+    if (filter.search) {
+      where.OR = [
+        { name: { search: filter.search } },
+        { description: { search: filter.search } },
+      ];
+    }
+
+    return where;
+  }
+
+  async getCategories(filter: CategoryFilter): Promise&lt;CategoryResult&lt;any&gt;&gt; {
+    try {
+      const where = this.buildWhereClause(filter);
+      const take = filter.take ?? 10;
+      const skip = filter.skip ?? 0;
+
+      const [total, data] = await Promise.all([
+        prisma.category.count({ where }),
+        prisma.category.findMany({
+          where,
+          skip,
+          take,
+          orderBy: filter.sortBy
+            ? { [filter.sortBy]: filter.sortOrder ?? "asc" }
+            : { createdAt: "desc" },
+        }),
+      ]);
+
+      return {
+        data,
+        total,
+        page: Math.floor(skip / take) + 1,
+        limit: take,
+        totalPages: Math.ceil(total / take),
+      };
+    } catch (error) {
+      throw new AppError(
+        "فشل في جلب التصنيفات",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getCategoryById(id: string) {
+    try {
+      const category = await prisma.category.findUnique({ where: { id } });
+      if (!category) {
+        throw new AppError("التصنيف غير موجود", StatusCodes.NOT_FOUND);
+      }
+      return category;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في جلب التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async createCategory(data: Prisma.CategoryCreateInput) {
+    try {
+      const existing = await prisma.category.findUnique({
+        where: { name: data.name },
+      });
+      if (existing) {
+        throw new AppError(
+          `التصنيف "${data.name}" موجود مسبقاً`,
+          StatusCodes.CONFLICT
+        );
+      }
+      return prisma.category.create({ data });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في إنشاء التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateCategory(id: string, data: Prisma.CategoryUpdateInput) {
+    try {
+      await this.getCategoryById(id);
+
+      if (data.name) {
+        const existing = await prisma.category.findUnique({
+          where: { name: data.name as string },
+        });
+        if (existing &amp;&amp; existing.id !== id) {
+          throw new AppError(
+            `التصنيف "${data.name}" موجود مسبقاً`,
+            StatusCodes.CONFLICT
+          );
+        }
+      }
+
+      return prisma.category.update({ where: { id }, data });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في تحديث التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async deleteCategory(id: string, soft = true) {
+    try {
+      await this.getCategoryById(id);
+
+      if (soft) {
+        return prisma.category.update({
+          where: { id },
+          data: { ishidden: true },
+        });
+      }
+
+      return prisma.category.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في حذف التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async toggleVisibility(id: string) {
+    try {
+      const category = await this.getCategoryById(id);
+      return prisma.category.update({
+        where: { id },
+        data: { ishidden: !category.ishidden },
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في تبديل حالة التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+}
+
+export const categoryModel = new CategoryModel();</div>
+</div>
+
+<h2 class="section" id="service">3. category.service.ts — طبقة الخدمات</h2>
+<div class="file-header">category.service.ts <span class="path">src/modules/category/category.service.ts</span></div>
+<div class="card warn" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الحالي</h3>
+<div class="code-block">import { category } from "./category.model";
+
+class CategoryService {
+  async getCategories(filter: {
+    search: string;
+    skip?: number;
+    take?: number;
+  }) {
+    return await category.getCategories(filter);
+  }
+}
+
+export const categoryService = new CategoryService();</div>
+<h3>المشاكل:</h3>
+<ul>
+<li>الخدمة مجرد pass-through — لا يوجد منطق أعمال</li>
+<li>لا يوجد CRUD كامل</li>
+<li>لا يوجد معالجة أخطاء</li>
+<li>لا يوجد تحويل بيانات</li>
+</ul>
+</div>
+
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود المُصحح الكامل</h3>
+<div class="code-block">import {
+  categoryModel,
+  type CategoryFilter,
+  type CategoryResult,
+  type CreateCategoryInput,
+  type UpdateCategoryInput,
+} from "./category.model";
+
+class CategoryService {
+
+  async getCategories(filter: CategoryFilter): Promise&lt;CategoryResult&lt;any&gt;&gt; {
+    return await categoryModel.getCategories(filter);
+  }
+
+  async getCategoryById(id: string) {
+    return await categoryModel.getCategoryById(id);
+  }
+
+  async createCategory(data: CreateCategoryInput) {
+    const createData = {
+      name: data.name,
+      description: data.description,
+      media: data.media ?? {},
+    };
+    return await categoryModel.createCategory(createData);
+  }
+
+  async updateCategory(id: string, data: UpdateCategoryInput) {
+    const updateData: Record&lt;string, any&gt; = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.media !== undefined) updateData.media = data.media;
+    if (data.isHidden !== undefined) updateData.ishidden = data.isHidden;
+
+    return await categoryModel.updateCategory(id, updateData);
+  }
+
+  async deleteCategory(id: string, soft = true) {
+    return await categoryModel.deleteCategory(id, soft);
+  }
+
+  async toggleVisibility(id: string) {
+    return await categoryModel.toggleVisibility(id);
+  }
+}
+
+export const categoryService = new CategoryService();</div>
+</div>
+
+<h2 class="section" id="validators">4. category.validators.ts — التحقق من المدخلات</h2>
+<div class="file-header">category.validators.ts <span class="path">src/modules/category/category.validators.ts</span></div>
+<div class="card warn" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الحالي: الملف فارغ بالكامل!</h3>
+<div class="note">لا يوجد أي تحقق من صحة المدخلات — أي بيانات خاطئة هتوصل للـ DB مباشرة</div>
+</div>
+
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل (Zod Schemas)</h3>
+<div class="code-block">import { z } from "zod";
+
+// ─── جلب التصنيفات (GET /api/categories) ───
+export const getCategoriesSchema = z.object({
+  search: z.string().optional().default(""),
+  page: z
+    .string()
+    .optional()
+    .default("1")
+    .refine((val) =&gt; Number(val) &gt; 0, "Page must be greater than 0"),
+  limit: z
+    .string()
+    .optional()
+    .default("10")
+    .refine(
+      (val) =&gt; Number(val) &gt; 0 &amp;&amp; Number(val) &lt;= 100,
+      "Limit must be between 1 and 100"
+    ),
+  sortBy: z.enum(["name", "createdAt", "updateAt"]).optional().default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+});
+
+// ─── جلب تصنيف بالـ ID (GET /api/categories/:id) ───
+export const getCategoryByIdSchema = z.object({
+  id: z.string().uuid("Invalid category ID format"),
+});
+
+// ─── إنشاء تصنيف (POST /api/categories) ───
+export const createCategorySchema = z.object({
+  name: z
+    .string()
+    .min(1, "Category name is required")
+    .max(100, "Category name must be at most 100 characters")
+    .trim(),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(500, "Description must be at most 500 characters")
+    .trim(),
+  media: z.any().optional().default({}),
+});
+
+// ─── تحديث تصنيف (PUT /api/categories/:id) ───
+export const updateCategorySchema = z.object({
+  id: z.string().uuid("Invalid category ID format"),
+  name: z.string().min(1).max(100).trim().optional(),
+  description: z.string().min(1).max(500).trim().optional(),
+  media: z.any().optional(),
+  isHidden: z.boolean().optional(),
+});
+
+// ─── حذف تصنيف (DELETE /api/categories/:id) ───
+export const deleteCategorySchema = z.object({
+  id: z.string().uuid("Invalid category ID format"),
+});
+
+// ─── تبديل الإخفاء (PATCH /api/categories/:id/toggle) ───
+export const toggleVisibilitySchema = z.object({
+  id: z.string().uuid("Invalid category ID format"),
+});</div>
+<table>
+<tr><th>Schema</th><th>المستخدم في</th><th>التحقق</th></tr>
+<tr><td>getCategoriesSchema</td><td>GET /api/categories</td><td>search اختياري، page/limit أرقام، sortBy و sortOrder من enum</td></tr>
+<tr><td>getCategoryByIdSchema</td><td>GET /api/categories/:id</td><td>id UUID صحيح</td></tr>
+<tr><td>createCategorySchema</td><td>POST /api/categories</td><td>name و description مطلوبين، media اختياري</td></tr>
+<tr><td>updateCategorySchema</td><td>PUT /api/categories/:id</td><td>id UUID، باقي الحقول اختيارية</td></tr>
+<tr><td>deleteCategorySchema</td><td>DELETE /api/categories/:id</td><td>id UUID صحيح</td></tr>
+<tr><td>toggleVisibilitySchema</td><td>PATCH /api/categories/:id/toggle</td><td>id UUID صحيح</td></tr>
+</table>
+</div>
+
+<h2 class="section" id="controller">5. category.controller.ts — متحكم الطلبات</h2>
+<div class="file-header">category.controller.ts <span class="path">src/modules/category/category.controller.ts</span></div>
+<div class="card warn" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الحالي</h3>
+<div class="code-block">import { asyncHandler } from "../../shared/utils/asyncHandler";
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { categoryService } from "./category.service";
+import AppError from "../../shared/errors/AppError";
+
+export const getCategories = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    // todo =&gt; Discuss about category ownership
+    const {
+      search,
+      limit = 10,
+      page = 1,
+    } = req.params as {
+      search: string;
+      limit: string;
+      page: string;
+    };
+    const skip = (Number(page) - 1) * Number(limit);
+    const filter = {
+      search: search,
+      skip: skip,
+      take: Number(limit),
+    };
+    const categories = await categoryService.getCategories(filter);
+    if (!categories || categories.length === 0) {
+      throw new AppError("Categories not found", StatusCodes.NOT_FOUND);
+    }
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "OK",
+      data: {
+        categories,
+        total: categories.length,
+        page: Number(page),
+      },
+    });
+  },
+);</div>
+<h3>المشاكل:</h3>
+<ul>
+<li>يقرأ من req.params بدلاً من req.query</li>
+<li>total: categories.length — عدّاد خاطئ</li>
+<li>لا يوجد CRUD كامل</li>
+<li>todo comment لم يُحل</li>
+</ul>
+</div>
+
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود المُصحح الكامل</h3>
+<div class="code-block">import { asyncHandler } from "../../shared/utils/asyncHandler";
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { categoryService } from "./category.service";
+
+// ─── GET /api/categories ───
+export const getCategories = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const {
+      search = "",
+      limit = "10",
+      page = "1",
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query as {
+      search?: string;
+      limit?: string;
+      page?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    };
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const filter = {
+      search,
+      skip,
+      take: Number(limit),
+      sortBy,
+      sortOrder: sortOrder as "asc" | "desc",
+    };
+
+    const result = await categoryService.getCategories(filter);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "OK",
+      data: {
+        categories: result.data,
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      },
+    });
+  },
+);
+
+// ─── GET /api/categories/:id ───
+export const getCategoryById = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { id } = req.params;
+    const category = await categoryService.getCategoryById(id);
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "OK",
+      data: { category },
+    });
+  },
+);
+
+// ─── POST /api/categories ───
+export const createCategory = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { name, description, media } = req.body;
+    const category = await categoryService.createCategory({
+      name,
+      description,
+      media,
+    });
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Category created successfully",
+      data: { category },
+    });
+  },
+);
+
+// ─── PUT /api/categories/:id ───
+export const updateCategory = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { id } = req.params;
+    const { name, description, media, isHidden } = req.body;
+    const category = await categoryService.updateCategory(id, {
+      name,
+      description,
+      media,
+      isHidden,
+    });
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Category updated successfully",
+      data: { category },
+    });
+  },
+);
+
+// ─── DELETE /api/categories/:id ───
+export const deleteCategory = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { id } = req.params;
+    await categoryService.deleteCategory(id);
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Category deleted successfully",
+    });
+  },
+);
+
+// ─── PATCH /api/categories/:id/toggle ───
+export const toggleVisibility = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { id } = req.params;
+    const category = await categoryService.toggleVisibility(id);
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Category visibility toggled",
+      data: { category },
+    });
+  },
+);</div>
+</div>
+
+<h2 class="section" id="routes">6. category.routes.ts — مسارات API</h2>
+<div class="file-header">category.routes.ts <span class="path">src/modules/category/category.routes.ts</span></div>
+<div class="card warn" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الحالي</h3>
+<div class="code-block">import { Router } from "express";
+import authenticate from "../../shared/middleware/authenticate";
+import { authorize } from "../../shared/middleware/authorize";
+import { getCategories } from "./category.controller";
+const router = Router();
+
+router.use(authenticate);
+
+router.route("/").get(getCategories);
+
+export default router;</div>
+<h3>المشاكل:</h3>
+<ul>
+<li>authorize مستورد لكن غير مستخدم</li>
+<li>لا يوجد routes للإنشاء أو التحديث أو الحذف</li>
+<li>لا يوجد validate middleware</li>
+</ul>
+</div>
+
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود المُصحح الكامل</h3>
+<div class="code-block">import { Router } from "express";
+import authenticate from "../../shared/middleware/authenticate";
+import { authorize } from "../../shared/middleware/authorize";
+import { validate } from "../../shared/middleware/validate";
+import {
+  getCategories,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  toggleVisibility,
+} from "./category.controller";
+import {
+  getCategoriesSchema,
+  getCategoryByIdSchema,
+  createCategorySchema,
+  updateCategorySchema,
+  deleteCategorySchema,
+  toggleVisibilitySchema,
+} from "./category.validators";
+
+const router = Router();
+
+router.use(authenticate);
+
+router
+  .route("/")
+  .get(validate(getCategoriesSchema), getCategories)
+  .post(validate(createCategorySchema), createCategory);
+
+router
+  .route("/:id")
+  .get(validate(getCategoryByIdSchema), getCategoryById)
+  .put(validate(updateCategorySchema), updateCategory)
+  .delete(validate(deleteCategorySchema), deleteCategory);
+
+router
+  .route("/:id/toggle")
+  .patch(validate(toggleVisibilitySchema), toggleVisibility);
+
+export default router;</div>
+</div>
+
+<h2 class="section" id="diff">7. ملخص كل التعديلات</h2>
+<div class="card">
+<table>
+<tr><th>#</th><th>الملف</th><th>التعديل</th></tr>
+<tr><td>1</td><td>model</td><td>إعادة تسمية الكلاس إلى CategoryModel</td></tr>
+<tr><td>2</td><td>model</td><td>إضافة TypeScript interfaces</td></tr>
+<tr><td>3</td><td>model</td><td>إضافة CRUD كامل (getById, create, update, delete, toggleVisibility)</td></tr>
+<tr><td>4</td><td>model</td><td>إضافة try-catch مع AppError</td></tr>
+<tr><td>5</td><td>model</td><td>إضافة buildWhereClause لتصفية المخفية</td></tr>
+<tr><td>6</td><td>model</td><td>إضافة ترتيب (sortBy, sortOrder)</td></tr>
+<tr><td>7</td><td>model</td><td>إضافة pagination metadata</td></tr>
+<tr><td>8</td><td>model</td><td>تحقق من عدم تكرار الاسم</td></tr>
+<tr><td>9</td><td>service</td><td>إضافة CRUD كامل مع تحويل البيانات</td></tr>
+<tr><td>10</td><td>validators</td><td>إنشاء الملف مع 6 Zod Schemas</td></tr>
+<tr><td>11</td><td>controller</td><td>إصلاح req.params إلى req.query</td></tr>
+<tr><td>12</td><td>controller</td><td>إصلاح total من DB بدلاً من length</td></tr>
+<tr><td>13</td><td>controller</td><td>إضافة CRUD كامل</td></tr>
+<tr><td>14</td><td>routes</td><td>إضافة Routes كاملة</td></tr>
+<tr><td>15</td><td>routes</td><td>إضافة validate middleware</td></tr>
+</table>
+</div>
+
+</div>
+</body>
+</html>

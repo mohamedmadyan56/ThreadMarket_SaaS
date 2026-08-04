@@ -1,20 +1,38 @@
 import prisma from "../../config/database";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import { Prisma } from "@prisma/client";
 
 
-class categoryModel {
-  async getCategories(filter: { search: string; skip?: number; take?: number; }) {
-    return await prisma.category.findMany({
-      where: {
-        OR: [
-          { name: { contains: filter.search } },
-          { description: { contains: filter.search } },
-        ]
 
-      },
-      skip: filter.skip,
-      take: filter.take,
-    })
-  }
+export interface CategoryFilter {
+  search?: string;
+  skip?: number;
+  take?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  isHidden?: boolean;
 
 }
-export const category = new categoryModel();
+
+
+export interface CategoryResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+
+}
+
+export interface createCategoryInput {
+  name: string;
+  description: string;
+  media?: any;
+}
+export interface UpdateCategoryInput {
+  name?: string;
+  description?: string;
+  media?: any;
+  isHidden?: boolean;
+}
