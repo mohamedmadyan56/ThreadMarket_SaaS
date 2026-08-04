@@ -25,7 +25,7 @@ export interface CategoryResult<T> {
 
 }
 
-export interface createCategoryInput {
+export interface CreateCategoryInput {
   name: string;
   description: string;
   media?: any;
@@ -204,5 +204,5 @@ class CategoryModel {
   }
 }
 
-export const category = new CategoryModel();
+export const categoryModel = new CategoryModel();
 
