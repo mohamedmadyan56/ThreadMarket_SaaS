@@ -163,4 +163,27 @@ class CategoryModel {
   }
 
 
+  async deleteCategory(id: string, soft = true) {
+    try {
+      await this.getCategoryById(id);
+
+      // حذف ناعم — إخفاء فقط
+      if (soft) {
+        return prisma.category.update({
+          where: { id },
+          data: { ishidden: true },
+        });
+      }
+
+      // حذف دائم
+      return prisma.category.delete({ where: { id } });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في حذف التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
 }
