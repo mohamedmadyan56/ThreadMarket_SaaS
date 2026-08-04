@@ -112,7 +112,55 @@ class CategoryModel {
   }
 
 
+  async createCategory(data: any) {
+    try {
+      // تحقق من عدم التكرار
+      const existing = await prisma.category.findUnique({
+        where: { name: data.name },
+      });
+      if (existing) {
+        throw new AppError(
+          `التصنيف "${data.name}" موجود مسبقاً`,
+          StatusCodes.CONFLICT
+        );
+      }
+      return prisma.category.create({ data });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في إنشاء التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
+  async updateCategory(id: string, data: any) {
+    try {
+      // تحقق من الوجود أولاً
+      await this.getCategoryById(id);
+
+      // تحقق من عدم تكرار الاسم إذا كان التحديث يشمل الاسم
+      if (data.name) {
+        const existing = await prisma.category.findUnique({
+          where: { name: data.name },
+        });
+        if (existing && existing.id !== id) {
+          throw new AppError(
+            `التصنيف "${data.name}" موجود مسبقاً`,
+            StatusCodes.CONFLICT
+          );
+        }
+      }
+
+      return prisma.category.update({ where: { id }, data });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في تحديث التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 
 
 }
