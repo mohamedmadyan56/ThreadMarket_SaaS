@@ -8,9 +8,8 @@ import { connectDB } from "./config/database";
 import authRouter from "./modules/auth/auth.routes";
 import brandRouter from "./modules/brand/brand.routes";
 import usersRouter from "./modules/user/user.routes";
-import categoryRouter from "./modules/category/category.routes";
 import { StatusCodes } from "http-status-codes";
-import userRouter from "./modules/user/user.routes";
+import categoryRouter from "./modules/category/category.routes";
 
 const app = express();
 connectDB();
@@ -26,7 +25,7 @@ app.use(cookieParser()); // ← جديد: عشان req.cookies يشتغل
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/brands", brandRouter);
 app.use("/api/v1/users", usersRouter);
-app.use("/api/v1/categories", categoryRouter);
+app.use("/api/v1/brands", categoryRouter);
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {

@@ -70,6 +70,15 @@ model User {
   wishlistUserId      String?         @db.Uuid
 }
 
+enum BrandVerificationTier {
+  pending
+  basic_verification // When creating at least 10 products 
+  full_verification // When Verifying his identity
+  suspended
+
+  @@map("brand_verification_tier")
+}
+
 model Brand {
   id                 String                @id @default(uuid()) @db.Uuid
   userId             String                @unique @map("user_id") @db.Uuid
@@ -81,7 +90,7 @@ model Brand {
   logoUrl            String?               @map("logo_url")
   logoUrl_id         String?               @map("logo_url_id")
   followersCount     Int                   @default(0) @map("followers_count")
-  viewedTimes        Int                   @default(0) @map("viewed_times")
+  viewedTimes        BigInt                @default(0) @map("viewed_times")
   isPromoted         Boolean               @default(false) @map("is_promoted")
   isActive           Boolean               @default(true) @map("is_active")
   balance            Decimal               @default(0) @db.Decimal(12, 2)
@@ -99,6 +108,7 @@ model Brand {
    * details will be flexiable based on payment gateway
    * }
    */
+  address            String?
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime              @default(now()) @map("updated_at") @db.Timestamptz
 
@@ -106,13 +116,14 @@ model Brand {
   documents   BrandDocument[]
   socialLinks BrandSocialLink[]
   followers   BrandFollower[]
+  categories  Category[]
   products    Product[]
-  branches    BrandBranch[]
   // reviews            Review[]
   // chatThreads        ChatThread[]
   // adCampaigns        AdCampaign[]
   // rankingScore       RankingScore?
   orderBrands OrderBrand[]
+  branches    BrandBranch[]
 
   @@map("brands")
 }
@@ -120,7 +131,7 @@ model Brand {
 model BrandBranch {
   id      String  @id @default(uuid()) @db.Uuid
   brandId String  @map("brand_id") @db.Uuid
-  name    String? @map("branch_name") // e.g. "Downtown Branch" — nullable, single-location brands may not need one
+  name    String? @map("branch_name")
 
   latitude            Decimal? @db.Decimal(9, 6)
   longitude           Decimal? @db.Decimal(9, 6)
@@ -131,7 +142,7 @@ model BrandBranch {
   state               String?
   country             String?
   postalCode          String?  @map("postal_code")
-  locationGranularity String?  @map("location_granularity") // ROOFTOP, GEOMETRIC_CENTER, APPROXIMATE, etc.
+  locationGranularity String?  @map("location_granularity")
 
   isMain   Boolean @default(false) @map("is_main")
   isActive Boolean @default(true) @map("is_active")
@@ -143,15 +154,6 @@ model BrandBranch {
 
   @@index([brandId])
   @@map("brand_branches")
-}
-
-enum BrandVerificationTier {
-  pending
-  basic_verification // When creating at least 10 products 
-  full_verification // When Verifying his identity
-  suspended
-
-  @@map("brand_verification_tier")
 }
 
 enum BrandDocType {
@@ -187,18 +189,17 @@ enum BrandDocRejectionReason {
 }
 
 model BrandDocument {
-  id              String                   @id @default(uuid()) @map("document_id") @db.Uuid
-  brandId         String                   @map("brand_id") @db.Uuid
-  docType         BrandDocType             @map("doc_type")
-  fileUrl         String                   @map("file_url")
-  fileUrl_id      String                   @map("file_url_id")
-  reviewedBy      String?                  @map("reviewed_by") @db.Uuid
-  reviewedAt      DateTime?                @map("reviewed_at") @db.Timestamptz
-  status          String                   @default("pending") @db.VarChar(20)
-  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  id              String                  @id @default(uuid()) @map("document_id") @db.Uuid
+  brandId         String                  @map("brand_id") @db.Uuid
+  docType         String                  @map("doc_type") @db.VarChar(40)
+  fileUrl         String                  @map("file_url")
+  reviewedBy      String?                 @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?               @map("reviewed_at") @db.Timestamptz
+  status          String                  @default("pending") @db.VarChar(20)
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz
   rejectionReason BrandDocRejectionReason?
-  brand           Brand                    @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  reviewer        User?                    @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
+  brand           Brand                   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reviewer        User?                   @relation("BrandDocumentReviewer", fields: [reviewedBy], references: [id])
 
   @@map("brand_documents")
 }
@@ -268,14 +269,19 @@ model Variant {
 }
 
 model Category {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @unique @map("category_name")
-  description String
-  media       Json
-  ishidden    Boolean   @default(false)
-  Products    Product[]
-  createdAt   DateTime  @default(now())
-  updateAt    DateTime  @default(now())
+  id        String    @id @default(uuid()) @db.Uuid
+  brandId   String    @map("brand_id") @db.Uuid
+  name      String    @map("category_name")
+  imageUrl  String?   @map("image_url")
+  media     Json
+  ishidden  Boolean   @default(false)
+  Products  Product[]
+  createdAt DateTime  @default(now())
+  updateAt  DateTime  @default(now())
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, name])
+  @@map("categories")
 }
 
 model Review {

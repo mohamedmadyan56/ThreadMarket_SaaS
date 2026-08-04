@@ -1,24 +1,24 @@
 import prisma from "../../config/database";
 
-class categoryModel {
-  async getCategories(filter: {
-    search: string;
-    skip?: number;
-    take?: number;
-  }) {
-    return await prisma.category.findMany({
-      where: {
-        name: {
-          contains: filter.search,
-        },
-        description: {
-          contains: filter.search,
-        },
-      },
-      skip: filter.skip,
-      take: filter.take,
-    });
-  }
+class CategoryModel {
+    async findByNameWithinBrand(brandId: string, name: string) {
+        return prisma.category.findFirst({
+            where: { brandId, name },
+            select: { id: true },
+        });
+    }
+
+    async create(brandId: string, name: string, imageUrl?: string) {
+        return prisma.category.create({
+            data: {
+                brandId,
+                name,
+                media: {},
+                ...(imageUrl ? { imageUrl } : {}),
+            },
+            select: { id: true },
+        });
+    }
 }
 
-export const category = new categoryModel();
+export const categoryModel = new CategoryModel();
