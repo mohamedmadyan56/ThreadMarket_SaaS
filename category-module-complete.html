@@ -19,12 +19,9 @@ body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f4f6f9;
 h2.section{color:#2c3e50;font-size:22px;margin:35px 0 15px;padding-bottom:8px;border-bottom:3px solid #3498db}
 h3{color:#34495e;font-size:16px;margin:14px 0 8px}
 .card{background:#fff;border-radius:10px;padding:22px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.06);border-right:5px solid #3498db}
-.card.warn{border-right-color:#e74c3c}
-.card.ok{border-right-color:#27ae60}
-.card.info{border-right-color:#f39c12}
+.card.warn{border-right-color:#e74c3c}.card.ok{border-right-color:#27ae60}.card.info{border-right-color:#f39c12}.card.purple{border-right-color:#8e44ad}
 .card p,.card li{font-size:14px;color:#555}
-.card ul,.card ol{padding-right:20px;margin-top:6px}
-.card ul li,.card ol li{margin-bottom:4px}
+.card ul,.card ol{padding-right:20px;margin-top:6px}.card ul li,.card ol li{margin-bottom:4px}
 .code-block{background:#0d1117;color:#c9d1d9;padding:16px;border-radius:8px;font-family:'Fira Code','Courier New',monospace;font-size:12.5px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.55;direction:ltr;text-align:left;border:1px solid #21262d;tab-size:2}
 table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
 th,td{padding:8px 12px;text-align:right;border-bottom:1px solid #eee}
@@ -119,7 +116,6 @@ export const category = new categoryModel();</div>
 <div class="code-block">import prisma from "../../config/database";
 import AppError from "../../shared/errors/AppError";
 import { StatusCodes } from "http-status-codes";
-import { Prisma } from "@prisma/client";
 
 // ─── Interfaces ───
 
@@ -157,13 +153,15 @@ export interface UpdateCategoryInput {
 
 class CategoryModel {
 
-  private buildWhereClause(filter: CategoryFilter): Prisma.CategoryWhereInput {
-    const where: Prisma.CategoryWhereInput = {};
+  private buildWhereClause(filter: CategoryFilter): any {
+    const where: any = {};
 
+    // استبعاد المخفية ما لم يُطلب صراحةً
     if (filter.isHidden === undefined || filter.isHidden === false) {
       where.ishidden = false;
     }
 
+    // بحث في الاسم والوصف
     if (filter.search) {
       where.OR = [
         { name: { search: filter.search } },
@@ -223,8 +221,9 @@ class CategoryModel {
     }
   }
 
-  async createCategory(data: Prisma.CategoryCreateInput) {
+  async createCategory(data: any) {
     try {
+      // تحقق من عدم التكرار
       const existing = await prisma.category.findUnique({
         where: { name: data.name },
       });
@@ -244,13 +243,15 @@ class CategoryModel {
     }
   }
 
-  async updateCategory(id: string, data: Prisma.CategoryUpdateInput) {
+  async updateCategory(id: string, data: any) {
     try {
+      // تحقق من الوجود أولاً
       await this.getCategoryById(id);
 
+      // تحقق من عدم تكرار الاسم إذا كان التحديث يشمل الاسم
       if (data.name) {
         const existing = await prisma.category.findUnique({
-          where: { name: data.name as string },
+          where: { name: data.name },
         });
         if (existing &amp;&amp; existing.id !== id) {
           throw new AppError(
@@ -274,6 +275,7 @@ class CategoryModel {
     try {
       await this.getCategoryById(id);
 
+      // حذف ناعم — إخفاء فقط
       if (soft) {
         return prisma.category.update({
           where: { id },
@@ -281,6 +283,7 @@ class CategoryModel {
         });
       }
 
+      // حذف دائم
       return prisma.category.delete({ where: { id } });
     } catch (error) {
       if (error instanceof AppError) throw error;
@@ -309,6 +312,7 @@ class CategoryModel {
 }
 
 export const categoryModel = new CategoryModel();</div>
+<div class="note">ملاحظة: استخدمنا any بدلاً من Prisma.CategoryWhereInput و Prisma.CategoryCreateInput عشان نتجنب مشاكل الـ import. لو عاوز تستخدم الـ Types الرسمية، شغل npx prisma generate أولاً.</div>
 </div>
 
 <h2 class="section" id="service">3. category.service.ts — طبقة الخدمات</h2>
@@ -724,13 +728,14 @@ export default router;</div>
 <tr><td>6</td><td>model</td><td>إضافة ترتيب (sortBy, sortOrder)</td></tr>
 <tr><td>7</td><td>model</td><td>إضافة pagination metadata</td></tr>
 <tr><td>8</td><td>model</td><td>تحقق من عدم تكرار الاسم</td></tr>
-<tr><td>9</td><td>service</td><td>إضافة CRUD كامل مع تحويل البيانات</td></tr>
-<tr><td>10</td><td>validators</td><td>إنشاء الملف مع 6 Zod Schemas</td></tr>
-<tr><td>11</td><td>controller</td><td>إصلاح req.params إلى req.query</td></tr>
-<tr><td>12</td><td>controller</td><td>إصلاح total من DB بدلاً من length</td></tr>
-<tr><td>13</td><td>controller</td><td>إضافة CRUD كامل</td></tr>
-<tr><td>14</td><td>routes</td><td>إضافة Routes كاملة</td></tr>
-<tr><td>15</td><td>routes</td><td>إضافة validate middleware</td></tr>
+<tr><td>9</td><td>model</td><td>استخدام any بدلاً من Prisma Types لتجنب مشاكل الـ import</td></tr>
+<tr><td>10</td><td>service</td><td>إضافة CRUD كامل مع تحويل البيانات</td></tr>
+<tr><td>11</td><td>validators</td><td>إنشاء الملف مع 6 Zod Schemas</td></tr>
+<tr><td>12</td><td>controller</td><td>إصلاح req.params إلى req.query</td></tr>
+<tr><td>13</td><td>controller</td><td>إصلاح total من DB بدلاً من length</td></tr>
+<tr><td>14</td><td>controller</td><td>إضافة CRUD كامل</td></tr>
+<tr><td>15</td><td>routes</td><td>إضافة Routes كاملة</td></tr>
+<tr><td>16</td><td>routes</td><td>إضافة validate middleware</td></tr>
 </table>
 </div>
 

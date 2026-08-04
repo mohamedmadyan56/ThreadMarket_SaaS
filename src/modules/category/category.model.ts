@@ -36,3 +36,30 @@ export interface UpdateCategoryInput {
   media?: any;
   isHidden?: boolean;
 }
+
+
+
+
+// ─── Model ───
+class CategoryModel {
+  private buildWhereClause(filter: CategoryFilter): any {
+    const where: any = {};
+
+
+    if (filter.isHidden === undefined || filter.isHidden === false) {
+      where.isHidden = false
+    }
+
+
+
+    if (filter.search) {
+      where.OR = [
+        { name: { search: filter.search } },
+        { description: { search: filter.search } },
+      ]
+    }
+
+    return where;
+
+  }
+}

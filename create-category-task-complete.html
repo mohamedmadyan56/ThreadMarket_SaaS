@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Category Task — ThreadMarket SaaS</title>
+<style>
+@media print{body{font-size:11pt}.code-block{font-size:10pt;white-space:pre-wrap;word-wrap:break-word}.card{break-inside:avoid;page-break-inside:avoid}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f4f6f9;color:#333;line-height:1.8;padding:25px}
+.container{max-width:1100px;margin:0 auto}
+.header{text-align:center;margin-bottom:35px;padding:30px;background:linear-gradient(135deg,#0f3460 0%,#16213e 50%,#1a1a2e 100%);border-radius:12px;color:#fff}
+.header h1{font-size:26px;margin-bottom:6px}
+.header p{opacity:.85;font-size:14px}
+.toc{background:#fff;border-radius:10px;padding:22px 28px;margin-bottom:30px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.toc h2{color:#2c3e50;margin-bottom:12px;font-size:19px;border-bottom:2px solid #3498db;padding-bottom:6px}
+.toc ol{padding-right:22px}.toc ol li{margin-bottom:6px;font-size:14px}
+.toc ol li a{color:#2980b9;text-decoration:none;font-weight:500}
+h2.section{color:#2c3e50;font-size:22px;margin:35px 0 15px;padding-bottom:8px;border-bottom:3px solid #3498db}
+h3{color:#34495e;font-size:16px;margin:14px 0 8px}
+.card{background:#fff;border-radius:10px;padding:22px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.06);border-right:5px solid #3498db}
+.card.warn{border-right-color:#e74c3c}
+.card.ok{border-right-color:#27ae60}
+.card.info{border-right-color:#f39c12}
+.card.purple{border-right-color:#8e44ad}
+.card p,.card li{font-size:14px;color:#555}
+.card ul,.card ol{padding-right:20px;margin-top:6px}
+.card ul li,.card ol li{margin-bottom:4px}
+.code-block{background:#0d1117;color:#c9d1d9;padding:16px;border-radius:8px;font-family:'Fira Code','Courier New',monospace;font-size:12.5px;overflow-x:auto;margin:10px 0;white-space:pre;line-height:1.55;direction:ltr;text-align:left;border:1px solid #21262d;tab-size:2}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}
+th,td{padding:8px 12px;text-align:right;border-bottom:1px solid #eee}
+th{background:#f8f9fa;color:#2c3e50;font-weight:600}
+.file-header{background:linear-gradient(90deg,#1e3a5f,#2c5282);color:#fff;padding:12px 20px;border-radius:8px 8px 0 0;font-size:15px;font-weight:600;margin-bottom:-1px}
+.file-header .path{opacity:.7;font-size:12px;font-weight:400;margin-right:10px}
+.note{background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:10px 14px;margin:10px 0;font-size:13px;color:#92400e}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px}
+.tag-step{background:#dbeafe;color:#1e40af}
+.tag-fix{background:#ffe0e0;color:#d63031}
+.tag-new{background:#e0f7fa;color:#00897b}
+.api-box{background:#f0f7ff;border:1px solid #90cdf4;border-radius:8px;padding:15px;margin:10px 0;font-size:13px}
+.api-box code{background:#e2e8f0;padding:2px 6px;border-radius:3px;font-size:12px}
+.method{display:inline-block;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:700;color:#fff;background:#38a169}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+<h1>Create Category — Implementation Task</h1>
+<p>ThreadMarket SaaS — دليل التنفيذ الكامل مع Prisma Schema + الكود + الشرح</p>
+</div>
+
+<div class="toc">
+<h2>فهرس المحتويات</h2>
+<ol>
+<li><a href="#task">وصف الـ Task المطلوب</a></li>
+<li><a href="#problem">المشكلة: الـ Schema الحالي لا يدعم الـ Task</a></li>
+<li><a href="#prisma-change">الخطوة 1: تعديل Prisma Schema</a></li>
+<li><a href="#migration">الخطوة 2: عمل Migration</a></li>
+<li><a href="#model">الخطوة 3: category.model.ts</a></li>
+<li><a href="#validators">الخطوة 4: category.validators.ts</a></li>
+<li><a href="#service">الخطوة 5: category.service.ts</a></li>
+<li><a href="#controller">الخطوة 6: category.controller.ts</a></li>
+<li><a href="#routes">الخطوة 7: category.routes.ts</a></li>
+<li><a href="#summary">ملخص كل التعديلات</a></li>
+</ol>
+</div>
+
+<!-- ===== Section 1: Task ===== -->
+<h2 class="section" id="task">1. وصف الـ Task المطلوب</h2>
+<div class="card info">
+<div class="api-box">
+<span class="method">POST</span> <code>/brands/{brandId}/categories</code><br><br>
+<strong>Description:</strong> Create a new category linked to a brand<br>
+<strong>Auth:</strong> Yes (role: brand)
+</div>
+<h3>Request Body</h3>
+<table>
+<tr><th>الحقل</th><th>النوع</th><th>مطلوب</th><th>الوصف</th></tr>
+<tr><td><code>name</code></td><td>string</td><td>نعم</td><td>اسم التصنيف — فريد داخل البراند</td></tr>
+<tr><td><code>imageUrl</code></td><td>string</td><td>لا</td><td>رابط صورة التصنيف</td></tr>
+</table>
+<h3>Example Request</h3>
+<div class="code-block">{
+  "name": "Women's Wear",
+  "imageUrl": "https://cdn.example.com/category.png"
+}</div>
+<h3>Success Response — 201</h3>
+<div class="code-block">{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "id": "uuid"
+  }
+}</div>
+</div>
+
+<!-- ===== Section 2: Problem ===== -->
+<h2 class="section" id="problem">2. المشكلة: الـ Schema الحالي لا يدعم الـ Task</h2>
+<div class="card warn">
+<h3>الحالة الحالية في Prisma Schema</h3>
+<div class="code-block">model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique @map("category_name")   // فريد عالمياً!
+  description String
+  media       Json
+  ishidden    Boolean   @default(false)
+  Products    Product[]
+  createdAt   DateTime  @default(now())
+  updateAt    DateTime  @default(now())
+}
+// لا يوجد brandId!</div>
+<h3>المشاكل</h3>
+<ul>
+<li><strong>لا يوجد brandId</strong> — Category غير مرتبة بأي Brand</li>
+<li><code>name</code> فريد عالمياً (<code>@unique</code>) — الـ Task مطلوب فريد <strong>داخل البراند</strong> فقط</li>
+<li>الـ Task مطلوب <code>imageUrl</code> لكن الـ Schema فيه <code>media</code> (Json)</li>
+</ul>
+</div>
+
+<!-- ===== Section 3: Prisma Schema ===== -->
+<h2 class="section" id="prisma-change">3. الخطوة 1: تعديل Prisma Schema</h2>
+<div class="card ok">
+<h3>التعديل المطلوب في prisma/schema.prisma</h3>
+<div class="code-block">model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @map("category_name")
+  description String    @default("")
+  imageUrl    String?   @map("image_url")
+  ishidden    Boolean   @default(false)
+  brandId     String    @map("brand_id") @db.Uuid
+
+  brand    Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  Products Product[]
+
+  createdAt DateTime @default(now())
+  updateAt  DateTime @default(now())
+
+  @@unique([brandId, name])
+  @@map("categories")
+}</div>
+<h3>التعديلات:</h3>
+<table>
+<tr><th>#</th><th>قبل</th><th>بعد</th><th>السبب</th></tr>
+<tr><td>1</td><td>لا يوجد brandId</td><td>brandId String @db.Uuid</td><td>ربط التصنيف بالبراند</td></tr>
+<tr><td>2</td><td>name @unique عالمياً</td><td>@@unique([brandId, name])</td><td>فريد داخل البراند فقط</td></tr>
+<tr><td>3</td><td>media Json</td><td>imageUrl String?</td><td>المطلوب في الـ Task</td></tr>
+<tr><td>4</td><td>description String</td><td>description String @default("")</td><td>يبقى اختياري</td></tr>
+<tr><td>5</td><td>لا يوجد relation</td><td>brand Brand @relation(...)</td><td>علاقة مع Brand</td></tr>
+<tr><td>6</td><td>لا يوجد map</td><td>@@map("categories")</td><td>اسم الجدول في DB</td></tr>
+</table>
+</div>
+
+<div class="card info">
+<h3>كذلك يجب تعديل model Brand في prisma/schema.prisma</h3>
+<div class="code-block">model Brand {
+  // ... الحقول الحالية ...
+  categories Category[]   // أضف هذا السطر
+}</div>
+</div>
+
+<!-- ===== Section 4: Migration ===== -->
+<h2 class="section" id="migration">4. الخطوة 2: عمل Migration</h2>
+<div class="card purple">
+<h3>الأوامر المطلوبة</h3>
+<div class="code-block"># 1. توليد Prisma Client بعد التعديل
+npx prisma generate
+
+# 2. عمل migration جديد
+npx prisma migrate dev --name add-brand-to-category
+
+# 3. لو عاوز تعمل push مباشر (بدون migration file)
+npx prisma db push</div>
+<div class="note">تأكد إن الـ migration شغال على database صحيح قبل ما تكمل</div>
+</div>
+
+<!-- ===== Section 5: Model ===== -->
+<h2 class="section" id="model">5. الخطوة 3: category.model.ts</h2>
+<div class="file-header">category.model.ts <span class="path">src/modules/category/category.model.ts</span></div>
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل</h3>
+<div class="code-block">import prisma from "../../config/database";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+// ─── Interfaces ───
+
+export interface CreateCategoryInput {
+  name: string;
+  imageUrl?: string;
+}
+
+// ─── Model ───
+
+class CategoryModel {
+
+  async createCategory(brandId: string, data: CreateCategoryInput) {
+    try {
+      // تحقق من عدم تكرار الاسم داخل نفس البراند
+      const existing = await prisma.category.findFirst({
+        where: {
+          brandId,
+          name: data.name,
+        },
+      });
+
+      if (existing) {
+        throw new AppError(
+          `Category "${data.name}" already exists for this brand`,
+          StatusCodes.CONFLICT
+        );
+      }
+
+      return await prisma.category.create({
+        data: {
+          name: data.name,
+          imageUrl: data.imageUrl ?? null,
+          brandId,
+        },
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to create category",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getCategoryById(id: string) {
+    try {
+      const category = await prisma.category.findUnique({ where: { id } });
+      if (!category) {
+        throw new AppError("Category not found", StatusCodes.NOT_FOUND);
+      }
+      return category;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "Failed to fetch category",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getCategoriesByBrand(brandId: string) {
+    try {
+      return await prisma.category.findMany({
+        where: { brandId },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (error) {
+      throw new AppError(
+        "Failed to fetch categories",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+}
+
+export const categoryModel = new CategoryModel();</div>
+<h3>شرح الكود:</h3>
+<ul>
+<li><strong>createCategory</strong> — يستقبل brandId و data، يتحقق من عدم التكرار داخل البراند، ثم ينشئ التصنيف</li>
+<li><strong>findFirst</strong> — يبحث عن تصنيف بنفس الاسم لنفس البراند (يتحقق من عدم التكرار)</li>
+<li><strong>getCategoryById</strong> — لجلب تصنيف واحد بالـ ID</li>
+<li><strong>getCategoriesByBrand</strong> — لجلب كل التصنيفات الخاصة ببراند معين</li>
+</ul>
+</div>
+
+<!-- ===== Section 6: Validators ===== -->
+<h2 class="section" id="validators">6. الخطوة 4: category.validators.ts</h2>
+<div class="file-header">category.validators.ts <span class="path">src/modules/category/category.validators.ts</span></div>
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل</h3>
+<div class="code-block">import { z } from "zod";
+
+// ─── Schema: إنشاء تصنيف (POST /brands/:brandId/categories) ───
+export const createCategorySchema = z.object({
+  brandId: z.string().uuid("Invalid brand ID format"),
+  name: z
+    .string()
+    .min(1, "Category name is required")
+    .max(100, "Category name must be at most 100 characters")
+    .trim(),
+  imageUrl: z.string().url("Invalid image URL").optional(),
+});
+
+// ─── Schema: جلب تصنيفات البراند (GET /brands/:brandId/categories) ───
+export const getCategoriesByBrandSchema = z.object({
+  brandId: z.string().uuid("Invalid brand ID format"),
+});
+
+// ─── Schema: جلب تصنيف بالـ ID (GET /categories/:id) ───
+export const getCategoryByIdSchema = z.object({
+  id: z.string().uuid("Invalid category ID format"),
+});</div>
+<h3>شرح:</h3>
+<ul>
+<li><strong>brandId</strong> — من الـ params، يجب أن يكون UUID صحيح</li>
+<li><strong>name</strong> — مطلوب، 1-100 حرف، trimmed</li>
+<li><strong>imageUrl</strong> — اختياري،但如果 وُجد يجب أن يكون URL صحيح</li>
+</ul>
+</div>
+
+<!-- ===== Section 7: Service ===== -->
+<h2 class="section" id="service">7. الخطوة 5: category.service.ts</h2>
+<div class="file-header">category.service.ts <span class="path">src/modules/category/category.service.ts</span></div>
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل</h3>
+<div class="code-block">import {
+  categoryModel,
+  type CreateCategoryInput,
+} from "./category.model";
+
+class CategoryService {
+
+  async createCategory(brandId: string, data: CreateCategoryInput) {
+    return await categoryModel.createCategory(brandId, data);
+  }
+
+  async getCategoryById(id: string) {
+    return await categoryModel.getCategoryById(id);
+  }
+
+  async getCategoriesByBrand(brandId: string) {
+    return await categoryModel.getCategoriesByBrand(brandId);
+  }
+}
+
+export const categoryService = new CategoryService();</div>
+</div>
+
+<!-- ===== Section 8: Controller ===== -->
+<h2 class="section" id="controller">8. الخطوة 6: category.controller.ts</h2>
+<div class="file-header">category.controller.ts <span class="path">src/modules/category/category.controller.ts</span></div>
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل</h3>
+<div class="code-block">import { asyncHandler } from "../../shared/utils/asyncHandler";
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { categoryService } from "./category.service";
+
+// ─── POST /brands/:brandId/categories ───
+export const createCategory = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { brandId } = req.params;
+    const { name, imageUrl } = req.body;
+
+    const category = await categoryService.createCategory(brandId, {
+      name,
+      imageUrl,
+    });
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Category created successfully",
+      data: {
+        id: category.id,
+      },
+    });
+  },
+);
+
+// ─── GET /brands/:brandId/categories ───
+export const getCategoriesByBrand = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { brandId } = req.params;
+
+    const categories = await categoryService.getCategoriesByBrand(brandId);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "OK",
+      data: {
+        categories,
+      },
+    });
+  },
+);
+
+// ─── GET /categories/:id ───
+export const getCategoryById = asyncHandler(
+  async (req: Request, res: Response) =&gt; {
+    const { id } = req.params;
+
+    const category = await categoryService.getCategoryById(id);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "OK",
+      data: { category },
+    });
+  },
+);</div>
+<h3>شرح:</h3>
+<ul>
+<li><strong>brandId</strong> — من <code>req.params</code> (الـ URL)</li>
+<li><strong>name, imageUrl</strong> — من <code>req.body</code></li>
+<li><strong>Response 201</strong> — يرجع فقط الـ <code>id</code> كما هو مطلوب في الـ Task</li>
+</ul>
+</div>
+
+<!-- ===== Section 9: Routes ===== -->
+<h2 class="section" id="routes">9. الخطوة 7: category.routes.ts</h2>
+<div class="file-header">category.routes.ts <span class="path">src/modules/category/category.routes.ts</span></div>
+<div class="card ok" style="border-radius:0 0 10px 10px;border-top:none">
+<h3>الكود الكامل</h3>
+<div class="code-block">import { Router } from "express";
+import authenticate from "../../shared/middleware/authenticate";
+import { authorize } from "../../shared/middleware/authorize";
+import { validate } from "../../shared/middleware/validate";
+import {
+  createCategory,
+  getCategoriesByBrand,
+  getCategoryById,
+} from "./category.controller";
+import {
+  createCategorySchema,
+  getCategoriesByBrandSchema,
+  getCategoryByIdSchema,
+} from "./category.validators";
+
+const router = Router();
+
+// ─── All routes require authentication ───
+router.use(authenticate);
+
+// ─── POST /brands/:brandId/categories ───
+router.post(
+  "/brands/:brandId/categories",
+  authorize("brand"),
+  validate(createCategorySchema),
+  createCategory
+);
+
+// ─── GET /brands/:brandId/categories ───
+router.get(
+  "/brands/:brandId/categories",
+  authorize("brand"),
+  validate(getCategoriesByBrandSchema),
+  getCategoriesByBrand
+);
+
+// ─── GET /categories/:id ───
+router.get(
+  "/categories/:id",
+  validate(getCategoryByIdSchema),
+  getCategoryById
+);
+
+export default router;</div>
+<h3>شرح:</h3>
+<ul>
+<li><strong>authorize("brand")</strong> — فقط المستخدمين برول brand يقدروا ينشئوا/يطلعوا تصنيفات</li>
+<li><strong>validate</strong> — يتحقق من صحة البيانات قبل الوصول للـ controller</li>
+<li><strong>router.use(authenticate)</strong> — كل الـ routes تحتاج JWT token</li>
+</ul>
+</div>
+
+<!-- ===== Section 10: Summary ===== -->
+<h2 class="section" id="summary">10. ملخص كل التعديلات</h2>
+<div class="card">
+<table>
+<tr><th>#</th><th>الملف</th><th>الإجراء</th></tr>
+<tr><td>1</td><td>prisma/schema.prisma</td><td>إضافة brandId + تعديل unique constraint + إضافة relation + تغيير media إلى imageUrl</td></tr>
+<tr><td>2</td><td>prisma/schema.prisma</td><td>إضافة categories[] في model Brand</td></tr>
+<tr><td>3</td><td>Terminal</td><td>npx prisma generate</td></tr>
+<tr><td>4</td><td>Terminal</td><td>npx prisma migrate dev --name add-brand-to-category</td></tr>
+<tr><td>5</td><td>category.model.ts</td><td>إعادة كتابة بالكامل — createCategory مع brandId</td></tr>
+<tr><td>6</td><td>category.validators.ts</td><td>3 Zod Schemas (create, getByBrand, getById)</td></tr>
+<tr><td>7</td><td>category.service.ts</td><td>3 methods (create, getById, getByBrand)</td></tr>
+<tr><td>8</td><td>category.controller.ts</td><td>3 controllers (create, getById, getByBrand)</td></tr>
+<tr><td>9</td><td>category.routes.ts</td><td>3 routes مع authenticate + authorize + validate</td></tr>
+</table>
+</div>
+
+<div class="card info">
+<h3>ملاحظات مهمة</h3>
+<ul>
+<li>لو عندك brands في الـ DB الحاليين، تأكد إن brandId صحيح</li>
+<li>لو فيه categories قديمة في الـ DB، هتحتاج تعدل她们 أو تحذفها قبل الـ migration</li>
+<li>الـ <code>onDelete: Cascade</code> معناه لو Brand اتحذف، كل التصنيفات بتاعته هتتحذف</li>
+<li>لو مش عاوز Cascade، غيّره إلى <code>Restrict</code></li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>
