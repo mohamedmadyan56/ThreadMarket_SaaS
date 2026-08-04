@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>شرح تاسك Update Category — ThreadMarket SaaS</title>
+<style>
+  body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; line-height: 1.95; margin: 40px auto; max-width: 900px; padding: 0 20px; color: #222; font-size: 15px; }
+  h1 { color: #1a5276; border-bottom: 4px solid #1a5276; padding-bottom: 10px; }
+  h2 { color: #c0392b; border-right: 5px solid #c0392b; padding-right: 12px; margin-top: 40px; }
+  h3 { color: #2980b9; }
+  code { background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 1px 6px; font-family: Consolas, monospace; direction: ltr; unicode-bidi: embed; }
+  pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; overflow-x: auto; font-family: Consolas, monospace; direction: ltr; text-align: left; font-size: 13px; line-height: 1.6; border: 1px solid #333; }
+  pre .c { color: #6a9955; }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  .box { background: #eafaf1; border-right: 5px solid #27ae60; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  .warn { background: #fef9e7; border-right: 5px solid #f39c12; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  .bad { background: #fdedec; border-right: 5px solid #e74c3c; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #bbb; padding: 8px 12px; text-align: right; }
+  th { background: #1a5276; color: #fff; }
+  tr:nth-child(even) { background: #f8f9f9; }
+  ul { margin: 8px 0; }
+  .step { counter-increment: step; }
+  .step::before { content: "الخطوة " counter(step) " — "; color: #c0392b; font-weight: bold; }
+  .filepath { background: #2c3e50; color: #ecf0f1; display: inline-block; padding: 3px 10px; border-radius: 4px; font-family: Consolas, monospace; font-size: 13px; direction: ltr; }
+</style>
+</head>
+<body>
+
+<h1>تاسك Update Category — الشرح الكامل خطوة بخطوة</h1>
+<p><em>ThreadMarket SaaS — التاسك مكتوب على Jira، وهنا هنشرح التاسك نفسه + تنفيذ الكود الكامل على أرض الواقع في المشروع.</em></p>
+
+<h2>1) شرح التاسك نفسه (Task Overview)</h2>
+
+<p>التاسك عبارة عن <strong>Endpoint جديد</strong> لتعديل (Update) كاتيجوري موجودة بتاعة براند معين. يعني كل براند له مجموعة categories، وده الـ endpoint اللي بيسمح له يعدّل أي كاتيجوري من بتوعه.</p>
+
+<table>
+  <tr><th>المعلومة</th><th>التفاصيل</th></tr>
+  <tr><td>HTTP Method</td><td><code>PATCH</code></td></tr>
+  <tr><td>Endpoint</td><td><code>/brands/{brandId}/categories/{catId}</code></td></tr>
+  <tr><td>Authentication</td><td>مطلوب (Bearer Token)</td></tr>
+  <tr><td>Authorized Roles</td><td><code>brand</code> فقط (مع إمكانية admin)</td></tr>
+  <tr><td>Path Parameters</td><td><code>brandId</code> + <code>catId</code></td></tr>
+  <tr><td>Request Body</td><td>جزء من بيانات الكاتيجوري (partial) — يعني ممكن ترسل اسم بس أو صورة بس</td></tr>
+  <tr><td>Success Response</td><td><code>200</code> مع <code>{ success, message, data }</code></td></tr>
+  <tr><td>Error Responses</td><td>Validation Error (400) / Not Found (404) / Forbidden (403)</td></tr>
+</table>
+
+<h3>الـ Business Logic المطلوب:</h3>
+<ul>
+  <li>الكاتيجوري لازم تكون <strong>بتاعة البراند ده فعلاً</strong> (التأكد إن <code>catId.brandId === brandId</code>).</li>
+  <li>لو مش بتاعته → Forbidden أو Not Found.</li>
+  <li>Side effects: <strong>none</strong> (مفيش حاجة تتغير غير الكاتيجوري نفسها).</li>
+</ul>
+
+<div class="box">
+<strong>ليه بنستخدم PATCH مش PUT؟</strong> لأن الـ PATCH يعني "تعديل جزئي" — بنسمح للمستخدم يبعت بس الحقول اللي عايز يعدلها، أما PUT فبيتوقع إنك تبعت الكيان كامل. التاسك بيقول "partial category payload" فده PATCH بالظبط.
+</div>
+
+<h2>2) هيكلة المشروع (Structure) — فين الكود بيتكتب</h2>
+
+<p>المشروع منظم بنمط <strong>Layered Architecture</strong> (طبقات)، وكل موديول ليه 4 ملفات:</p>
+
+<pre>
+src/modules/category/
+├── category.routes.ts      ← تعريف الـ route والـ middlewares
+├── category.controller.ts  ← استقبال الـ request ورد الـ response
+├── category.service.ts     ← الـ business logic (القرارات والأخطاء)
+├── category.model.ts       ← التعامل مع قاعدة البيانات (Prisma)
+└── category.validators.ts  ← التحقق من الـ input بـ Zod
+</pre>
+
+<p>ملفات موجودة ومستخدمة في المشروع (إحنا هنكمّل عليها):</p>
+<table>
+  <tr><th>الملف</th><th>الوظيفة</th></tr>
+  <tr><td><code>src/shared/middleware/authenticate.ts</code></td><td>يتحقق من الـ JWT token ويحط الـ user في <code>req.user</code></td></tr>
+  <tr><td><code>src/shared/middleware/authorize.ts</code></td><td>يتأكد إن الـ role مسموح (مثلاً <code>brand</code>)</td></tr>
+  <tr><td><code>src/shared/middleware/validate.ts</code></td><td>يتحقق من الـ input بـ Zod schema</td></tr>
+  <tr><td><code>src/shared/errors/AppError.ts</code></td><td>كلاس الخطأ الموحد (message + statusCode)</td></tr>
+  <tr><td><code>src/shared/utils/asyncHandler.ts</code></td><td>يلفّ الـ async controllers ويبعت الأخطاء لـ error handler</td></tr>
+  <tr><td><code>src/server.ts</code></td><td>بيتم تركيب كل الـ routers — السطر 28 بيركّب <code>categoryRouter</code> على <code>/api/v1/brands</code></td></tr>
+</table>
+
+<div class="warn">
+<strong>معلومة مهمة عن الـ route:</strong> في <code>server.ts</code> السطر 28، الـ categoryRouter متشال على <code>app.use("/api/v1/brands", categoryRouter)</code>. يعني أي route جوه category.routes هيتضاف بعد <code>/api/v1/brands</code>. فلو الـ route في الملف هو <code>"/:brandId/categories/:catId"</code>، فـ الـ endpoint الكامل هيكون:
+<code>PATCH /api/v1/brands/:brandId/categories/:catId</code> ✅
+</div>
+
+<h2>3) الـ Data Model (schema.prisma) — شكل الكاتيجوري في الداتابيز</h2>
+
+<pre>
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  brandId   String    @map("brand_id") @db.Uuid
+  name      String    @map("category_name")
+  imageUrl  String?   @map("image_url")
+  media     Json
+  ishidden  Boolean   @default(false)
+  Products  Product[]
+  createdAt DateTime  @default(now())
+  updateAt  DateTime  @default(now())
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, name])   <span class="c">// نفس الاسم ممنوع يتكرر لنفس البراند</span>
+  @@map("categories")
+}
+</pre>
+
+<p>الحقول اللي ممكن نعدّلها في التاسك ده: <code>name</code> و <code>imageUrl</code> و <code>ishidden</code>. الـ <code>brandId</code> ممنوع يتغير (الكاتيجوري مش هتتحول لبراند تاني).</p>
+
+<div class="warn">
+<strong>نقطة الانتباه:</strong> جدول Category فيه <code>@@unique([brandId, name])</code> — يعني لو حبيت تعدّل الاسم، لازم نتأكد إن الاسم الجديد مش متاخد من كاتيجوري تانية لنفس البراند، وإلا هنشيل خطأ <code>Conflict</code> من الداتابيز نفسه. الـ service هيتعامل مع ده.
+</div>
+
+<h2>4) التنفيذ خطوة بخطوة (Implementation) 🚀</h2>
+
+<p>هنا هننفّذ الـ Update خطوة بخطوة، بنفس نمط الـ Create الموجود في المشروع. الترتيب: الـ Model → الـ Service → الـ Controller → الـ Validator → الـ Route.</p>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.model.ts</span> — إضافة دوال الداتابيز</h3>
+
+<p>نضيف دالة <code>findByIdWithinBrand</code> (للتأكد إن الكاتيجوري بتاعة البراند) ودالة <code>update</code> (للتعديل الفعلي):</p>
+
+<pre>
+import prisma from "../../config/database";
+
+class CategoryModel {
+    <span class="c">// موجودة قبل كده — لفحص تكرار الاسم</span>
+    async findByNameWithinBrand(brandId: string, name: string) {
+        return prisma.category.findFirst({
+            where: { brandId, name },
+            select: { id: true },
+        });
+    }
+
+    <span class="c">// (جديد) جلب كاتيجوري بشرط أنها تخص براند معين</span>
+    async findByIdWithinBrand(brandId: string, catId: string) {
+        return prisma.category.findFirst({
+            where: { id: catId, brandId },
+        });
+    }
+
+    <span class="c">// (جديد) تعديل جزئي — بنبعت فقط الحقول اللي اتغيرت</span>
+    async update(catId: string, data: { name?: string; imageUrl?: string; ishidden?: boolean }) {
+        return prisma.category.update({
+            where: { id: catId },
+            data: {
+                ...(data.name !== undefined ? { name: data.name } : {}),
+                ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl } : {}),
+                ...(data.ishidden !== undefined ? { ishidden: data.ishidden } : {}),
+                updateAt: new Date(),
+            },
+            select: { id: true },
+        });
+    }
+
+    <span class="c">// موجودة قبل كده</span>
+    async create(brandId: string, name: string, imageUrl?: string) {
+        return prisma.category.create({
+            data: {
+                brandId,
+                name,
+                media: {},
+                ...(imageUrl ? { imageUrl } : {}),
+            },
+            select: { id: true },
+        });
+    }
+}
+
+export const categoryModel = new CategoryModel();
+</pre>
+
+<p><strong>شرح كل جزء:</strong></p>
+<ul>
+  <li><code>findByIdWithinBrand</code>: بنستخدم <code>findFirst</code> بـ <code>where: { id: catId, brandId }</code> — ده هو التطبيق العملي لـ "Validation Rules: category must belong to the brand". لو رجع <code>null</code> يبقى الكاتيجوري مش موجودة أو مش بتاعة البراند ده.</li>
+  <li><code>update</code>: في Prisma الـ <code>update</code> بيرمي خطأ لو الـ id مش موجود، وبنبني الـ data بشكل ديناميكي عشان نعدّل الحقول المبعوتة بس (partial update). <code>updateAt: new Date()</code> عشان نحدّث طابع الوقت.</li>
+  <li>استخدمنا spread مع check (<code>...(... !== undefined ? {...} : {})</code>) لأن كده لو المستخدم مبعتهاش حاجة، الحقل مش هيتعدل.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.service.ts</span> — الـ Business Logic</h3>
+
+<p>نضيف ميثود <code>updateCategory</code> اللي فيها كل القرارات:</p>
+
+<pre>
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import { brandModel } from "../brand/brand.model";
+import { categoryModel } from "./category.model";
+
+class CategoryService {
+
+    <span class="c">// موجودة قبل كده</span>
+    async createCategory(brandId, userId, role, name, imageUrl?) {
+        <span class="c">// ... نفس اللي موجود</span>
+    }
+
+    <span class="c">// (جديد) تعديل كاتيجوري</span>
+    async updateCategory(brandId: string, catId: string, userId: string, role: string, data: { name?: string; imageUrl?: string; ishidden?: boolean }) {
+        <span class="c">// 1) نتأكد إن البراند موجود</span>
+        const brand = await brandModel.findBrandWithDocuments(brandId);
+        if (!brand) {
+            throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+        }
+
+        <span class="c">// 2) صلاحية: صاحب البراند أو admin بس</span>
+        if (brand.userId !== userId && role !== "admin") {
+            throw new AppError("You are not authorized to update this category", StatusCodes.FORBIDDEN);
+        }
+
+        <span class="c">// 3) الكاتيجوري موجودة وبتاعة البراند ده؟</span>
+        const category = await categoryModel.findByIdWithinBrand(brandId, catId);
+        if (!category) {
+            throw new AppError("Category not found or does not belong to this brand", StatusCodes.NOT_FOUND);
+        }
+
+        <span class="c">// 4) لو المستخدم بيعدّل الاسم، نتأكد إنه مش مكرر لنفس البراند</span>
+        if (data.name && data.name !== category.name) {
+            const existing = await categoryModel.findByNameWithinBrand(brandId, data.name);
+            if (existing && existing.id !== catId) {
+                throw new AppError("Category name already exists in this brand", StatusCodes.CONFLICT);
+            }
+        }
+
+        <span class="c">// 5) التعديل الفعلي</span>
+        const updated = await categoryModel.update(catId, data);
+        return { id: updated.id };
+    }
+}
+
+export const categoryService = new CategoryService();
+</pre>
+
+<p><strong>شرح كل خطوة في الـ service:</strong></p>
+<ul>
+  <li><strong>الخطوة 1:</strong> البراند نفسه لازم موجود — لو لأ → <code>404 Not Found</code>.</li>
+  <li><strong>الخطوة 2:</strong> التأكد إن المستخدم هو صاحب البراند أو admin → لو لأ → <code>403 Forbidden</code>. ده اللي يطلبه التاسك في "Authorized Roles: brand".</li>
+  <li><strong>الخطوة 3:</strong> <span class="bad">ده أهم سطر في التاسك كله</span> — بنستخدم <code>findByIdWithinBrand</code> اللي بيعمل شرط مزدوج (<code>id</code> + <code>brandId</code>) في query واحدة. كده بنتأكد إن الكاتيجوري موجودة وإنها بتاعة البراند ده في نفس الوقت → لو لأ → <code>404</code>.</li>
+  <li><strong>الخطوة 4:</strong> لو الاسم بيتعدل، بنتحقق إن مفيش كاتيجوري تانية لنفس البراند عندها نفس الاسم الجديد (except الكاتيجوري نفسها) → لو في → <code>409 Conflict</code>. ده بيحمي الـ <code>@@unique([brandId, name])</code> من الداتابيز.</li>
+  <li><strong>الخطوة 5:</strong> بننادي الـ model اللي بيعمل الـ Prisma update ويرجع الـ <code>id</code>.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.controller.ts</span> — الـ Request/Response</h3>
+
+<p>نضيف الـ controller اللي بياخد الـ params والـ body ويستدعي الـ service:</p>
+
+<pre>
+import { Request, Response } from "express";
+import { categoryService } from "./category.service";
+import { StatusCodes } from "http-status-codes";
+import { asyncHandler } from "../../shared/utils/asyncHandler";
+import AppError from "../../shared/errors/AppError";
+
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+    <span class="c">// ... الموجود قبل كده</span>
+});
+
+<span class="c">// (جديد) تعديل كاتيجوري</span>
+export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
+    const { brandId, catId } = req.params as { brandId: string; catId: string };
+    const { name, imageUrl, ishidden } = req.body;
+    const user = (req as any).user;
+
+    if (!user?.id) {
+        throw new AppError("Not authenticated", StatusCodes.UNAUTHORIZED);
+    }
+
+    const result = await categoryService.updateCategory(
+        brandId, catId, user.id, user.role,
+        { name, imageUrl, ishidden }
+    );
+
+    res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Category updated successfully",
+        data: result,
+    });
+});
+</pre>
+
+<p><strong>شرح:</strong></p>
+<ul>
+  <li>بنقرأ <code>brandId</code> و <code>catId</code> من <code>req.params</code> (عشان هما في الـ URL).</li>
+  <li>بنقرأ <code>name, imageUrl, ishidden</code> من الـ body — كلهم optional عشان "partial payload". لو المستخدم مبعتهاش حاجة هيبقوا <code>undefined</code> والـ service هيتجاهلهم.</li>
+  <li>الـ user جاي من الـ <code>authenticate</code> middleware اللي حطه في <code>req.user</code>.</li>
+  <li>الـ response: <code>200 OK</code> بنفس شكل الـ JSON المطلوب في التاسك بالظبط.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.validators.ts</span> — الـ Validation بـ Zod</h3>
+
+<p>نضيف schema للتعديل (كل الحقول optional لأنها partial):</p>
+
+<pre>
+import { z } from "zod";
+
+export const createCategorySchema = z.object({
+    brandId: z.string().uuid({ message: "Invalid brand ID format" }),
+    name: z.string().min(1, "Category name is required"),
+    imageUrl: z.string().url("Invalid image URL format").optional(),
+});
+
+<span class="c">// (جديد) Schema للتعديل الجزئي</span>
+export const updateCategorySchema = z.object({
+    brandId: z.string().uuid({ message: "Invalid brand ID format" }),
+    catId: z.string().uuid({ message: "Invalid category ID format" }),
+    name: z.string().min(1, "Category name cannot be empty").optional(),
+    imageUrl: z.string().url("Invalid image URL format").optional(),
+    ishidden: z.boolean().optional(),
+});
+</pre>
+
+<p><strong>شرح:</strong></p>
+<ul>
+  <li>الـ <code>validate</code> middleware في المشروع بيدمج <code>req.params</code> + <code>req.body</code> + <code>req.query</code> مع بعض، فبنضع <code>brandId</code> و <code>catId</code> (اللي جايين من الـ params) في نفس الـ schema.</li>
+  <li><code>.optional()</code> على كل حقول الـ body عشان المستخدم ممكن يعدل حقل واحد بس — وده اللي قصده التاسك بـ "partial category payload".</li>
+  <li>لو حاجة غلط، الـ middleware هيرمي <code>400 Validation Error</code> بأول رسالة خطأ.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.routes.ts</span> — ربط كل حاجة</h3>
+
+<p>نضيف الـ route الجديد بالـ middlewares بالترتيب الصحيح:</p>
+
+<pre>
+import { Router } from "express";
+import { validate } from "../../shared/middleware/validate";
+import authenticate from "../../shared/middleware/authenticate";
+import { authorize } from "../../shared/middleware/authorize";
+import { createCategory, updateCategory } from "./category.controller";
+import { createCategorySchema, updateCategorySchema } from "./category.validators";
+
+const router = Router();
+
+router.post("/:brandId/categories",
+    authenticate,
+    authorize("brand"),
+    validate(createCategorySchema),
+    createCategory,
+);
+
+<span class="c">// (جديد) تعديل كاتيجوري</span>
+router.patch("/:brandId/categories/:catId",
+    authenticate,              <span class="c">// 1) لازم يكون عامل login</span>
+    authorize("brand"),        <span class="c">// 2) لازم الـ role يكون brand</span>
+    validate(updateCategorySchema), <span class="c">// 3) تحقق من المدخلات</span>
+    updateCategory,            <span class="c">// 4) الـ controller</span>
+);
+
+export default router;
+</pre>
+
+<p><strong>شرح ترتيب الـ middlewares:</strong></p>
+<table>
+  <tr><th>#</th><th>Middleware</th><th>بيأكد إيه؟</th></tr>
+  <tr><td>1</td><td><code>authenticate</code></td><td>فيش user؟ → لو لأ: 401 Unauthorized</td></tr>
+  <tr><td>2</td><td><code>authorize("brand")</code></td><td>الـ role بتاعته brand؟ → لو لأ: 403 Forbidden</td></tr>
+  <tr><td>3</td><td><code>validate(updateCategorySchema)</code></td><td>المدخلات صح؟ → لو لأ: 400 Validation Error</td></tr>
+  <tr><td>4</td><td><code>updateCategory</code></td><td>المنطق والرد: 200 أو 403/404</td></tr>
+</table>
+
+<div class="box">
+<strong>خلاصة الـ URL الكامل:</strong>
+<code>PATCH /api/v1/brands/:brandId/categories/:catId</code> — لإن الـ router مركّب على <code>/api/v1/brands</code> في server.ts.
+</div>
+
+<h2>5) اختبار الـ Endpoint (Testing)</h2>
+
+<p>مثال بطلبه كامل بالـ <code>Authorization: Bearer &lt;token&gt;</code>:</p>
+
+<pre>
+PATCH http://localhost:PORT/api/v1/brands/&lt;brandId&gt;/categories/&lt;catId&gt;
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+
+<span class="c">// Body (جزء من الحقول فقط):</span>
+{
+  "name": "Eid Collection 2026"
+}
+</pre>
+
+<p><strong>الرد المتوقع (success):</strong></p>
+<pre>{
+  "success": true,
+  "message": "Category updated successfully",
+  "data": {
+    "id": "5f2a8e6c-3b11-4c5e-9d2a-1f0b3c4d5e6f"
+  }
+}</pre>
+
+<h2>6) جدول الـ Error Codes اللي ممكن تحصل</h2>
+
+<table>
+  <tr><th>الحالة</th><th>Status Code</th><th>سببها فين في الكود</th></tr>
+  <tr><td>Validation Error</td><td><code>400</code></td><td>Zod في الـ validate middleware — UUID غلط، اسم فاضي، URL مش صحيح</td></tr>
+  <tr><td>Unauthorized</td><td><code>401</code></td><td>authenticate — مفيش token أو token غير صالح</td></tr>
+  <tr><td>Forbidden</td><td><code>403</code></td><td>authorize (role مش brand) أو service (مش صاحب البراند)</td></tr>
+  <tr><td>Not Found</td><td><code>404</code></td><td>service — البراند مش موجود أو الكاتيجوري مش موجودة / مش بتاعة البراند</td></tr>
+  <tr><td>Conflict</td><td><code>409</code></td><td>service — الاسم الجديد مكرر لنفس البراند</td></tr>
+</table>
+
+<div class="bad">
+<strong>معلومة مهمة عن الـ 404:</strong> التاسك بيقول "Validation Rules: category must belong to the brand". في التطبيق عملناها بـ <code>findByIdWithinBrand</code> اللي بيدور بـ <code>{ id: catId, brandId }</code> في query واحدة. ده أفضل من إننا نجيب الكاتيجوري أولاً وبعدين نقارن — لأنه بيقلل عدد الـ database queries ولأنه بيمنع تسريب معلومة إن الكاتيجوري موجودة أصلًا (بيحمي من الـ enumeration attacks).
+</div>
+
+<h2>7) المخطط النهائي (Flow Diagram)</h2>
+
+<pre>
+الطلب:  PATCH /brands/{brandId}/categories/{catId}
+           │
+           ▼
+    [1] authenticate ──── خطأ? ──▶ 401 Unauthorized
+           │
+           ▼
+    [2] authorize("brand") ── خطأ? ──▶ 403 Forbidden
+           │
+           ▼
+    [3] validate(updateCategorySchema) ── خطأ? ──▶ 400 Validation Error
+           │
+           ▼
+    [4] updateCategory (Controller)
+           │
+           ▼
+    [5] updateCategory (Service)
+           │
+           ├── brand موجود? ──── لا ──▶ 404 Not Found
+           ├── brand.userId === userId أو admin? ── لا ──▶ 403 Forbidden
+           ├── category موجودة وبتاعة brand? ── لا ──▶ 404 Not Found
+           ├── name مكرر (لو بيتعدل)? ── نعم ──▶ 409 Conflict
+           ▼
+    [6] categoryModel.update()  (Prisma UPDATE)
+           ▼
+    [7] 200 { success: true, message: "Category updated successfully", data: { id } }
+</pre>
+
+<h2>8) ملخص سريع (Checklist)</h2>
+
+<ul>
+  <li>✅ أضفنا <code>findByIdWithinBrand</code> + <code>update</code> في الـ model</li>
+  <li>✅ أضفنا <code>updateCategory</code> في الـ service (وجود البراند → الصلاحية → ملكية الكاتيجوري → منع التكرار)</li>
+  <li>✅ أضفنا <code>updateCategory</code> في الـ controller (يرد 200 بنفس شكل JSON المطلوب)</li>
+  <li>✅ أضفنا <code>updateCategorySchema</code> بـ Zod (كل الحقول optional = partial)</li>
+  <li>✅ أضفنا <code>router.patch("/:brandId/categories/:catId", ...)</code> بالـ middlewares بالترتيب</li>
+  <li>✅ كل الأخطاء عبر <code>AppError</code> → error handler الموحد في server.ts</li>
+</ul>
+
+</body>
+</html>
