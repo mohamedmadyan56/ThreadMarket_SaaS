@@ -1,7 +1,7 @@
 import prisma from "../../config/database";
 import AppError from "../../shared/errors/AppError";
 import { StatusCodes } from "http-status-codes";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../generated/prisma/client";
 
 
 
@@ -186,4 +186,23 @@ class CategoryModel {
     }
   }
 
+
+  async toggleVisibility(id: string) {
+    try {
+      const category = await this.getCategoryById(id);
+      return prisma.category.update({
+        where: { id },
+        data: { ishidden: !category.ishidden },
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(
+        "فشل في تبديل حالة التصنيف",
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
 }
+
+export const category = new CategoryModel();
+

@@ -22,7 +22,7 @@ export const getCategories = asyncHandler(
       take: Number(limit),
     };
     const categories = await categoryService.getCategories(filter);
-    if (!categories || categories.length === 0) {
+    if (!categories || categories.data.length === 0) {
       throw new AppError("Categories not found", StatusCodes.NOT_FOUND);
     }
     res.status(StatusCodes.OK).json({
@@ -30,7 +30,7 @@ export const getCategories = asyncHandler(
       message: "OK",
       data: {
         categories,
-        total: categories.length,
+        total: categories.total,
         page: Number(page),
       },
     });
