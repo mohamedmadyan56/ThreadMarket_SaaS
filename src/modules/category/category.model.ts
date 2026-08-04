@@ -96,7 +96,20 @@ class CategoryModel {
   }
 
 
+  async getCategoryById(id: string) {
+    try {
+      const category = await prisma.category.findUnique({ where: { id } });
+      if (!category) {
+        throw new AppError("التصنيف غير موجود", StatusCodes.NOT_FOUND);
 
+      }
+      return category;
+
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError("فشل في جلب التصنيف", StatusCodes.INTERNAL_SERVER_ERROR)
+    }
+  }
 
 
 
