@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تاسك Create Category — ThreadMarket SaaS</title>
+<style>
+  body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; line-height: 1.95; margin: 40px auto; max-width: 900px; padding: 0 20px; color: #222; font-size: 15px; }
+  h1 { color: #1a5276; border-bottom: 4px solid #1a5276; padding-bottom: 10px; }
+  h2 { color: #c0392b; border-right: 5px solid #c0392b; padding-right: 12px; margin-top: 40px; }
+  h3 { color: #2980b9; }
+  code { background: #f4f4f4; border: 1px solid #ddd; border-radius: 4px; padding: 1px 6px; font-family: Consolas, monospace; direction: ltr; unicode-bidi: embed; }
+  pre { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; overflow-x: auto; font-family: Consolas, monospace; direction: ltr; text-align: left; font-size: 13px; line-height: 1.6; border: 1px solid #333; }
+  pre .c { color: #6a9955; }
+  pre .k { color: #569cd6; }
+  pre .s { color: #ce9178; }
+  pre .f { color: #dcdcaa; }
+  .box { background: #eafaf1; border-right: 5px solid #27ae60; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  .warn { background: #fef9e7; border-right: 5px solid #f39c12; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  .bad { background: #fdedec; border-right: 5px solid #e74c3c; padding: 14px 18px; border-radius: 6px; margin: 18px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+  th, td { border: 1px solid #bbb; padding: 8px 12px; text-align: right; }
+  th { background: #1a5276; color: #fff; }
+  tr:nth-child(even) { background: #f8f9f9; }
+  ul { margin: 8px 0; }
+  .step { counter-increment: step; }
+  .step::before { content: "الخطوة " counter(step) " — "; color: #c0392b; font-weight: bold; }
+  .filepath { background: #2c3e50; color: #ecf0f1; display: inline-block; padding: 3px 10px; border-radius: 4px; font-family: Consolas, monospace; font-size: 13px; direction: ltr; }
+</style>
+</head>
+<body>
+<style>body { counter-reset: step; }</style>
+
+<h1>تاسك Create Category — الشرح الكامل + الكود خطوة بخطوة</h1>
+<p><em>ThreadMarket SaaS — شرح تاسك جيرا + تنفيذ كامل بالكود، متناسق مع الـ module الموجود في المشروع فعلاً.</em></p>
+
+<h2>1) شرح التاسك نفسه (Task Overview)</h2>
+
+<p>التاسك عبارة عن <strong>Endpoint جديد</strong> لإنشاء كاتيجوري (تصنيف) جديد وربطه ببراند معين. يعني البراند بيقدر يضيف تصنيفات خاصة بيه للمنتجات بتاعته.</p>
+
+<table>
+  <tr><th>المعلومة</th><th>التفاصيل</th></tr>
+  <tr><td>HTTP Method</td><td><code>POST</code></td></tr>
+  <tr><td>Endpoint</td><td><code>/brands/{brandId}/categories</code></td></tr>
+  <tr><td>Description</td><td>إنشاء كاتيجوري جديدة</td></tr>
+  <tr><td>Authentication Required</td><td>نعم (Bearer Token)</td></tr>
+  <tr><td>Authorized Roles</td><td><code>brand</code> فقط</td></tr>
+  <tr><td>Request Body</td><td><code>name</code> (مطلوب: string) + <code>imageUrl</code> (اختياري: string)</td></tr>
+  <tr><td>Validation Rule</td><td>اسم الكاتيجوري لازم يكون <strong>فريد داخل البراند الواحد</strong></td></tr>
+  <tr><td>Success Response</td><td><code>201</code> مع <code>{ success, message, data: { id } }</code></td></tr>
+  <tr><td>Error Responses</td><td>Validation Error (400) / Forbidden (403) / Internal Server Error (500)</td></tr>
+</table>
+
+<h3>مثال الـ Request من التاسك:</h3>
+<pre>
+POST /brands/&lt;brandId&gt;/categories
+Authorization: Bearer &lt;token&gt;
+
+{
+  "name": "Women's Wear",
+  "imageUrl": "https://cdn.example.com/category.png"
+}
+</pre>
+
+<h3>الـ Response المتوقع:</h3>
+<pre>{
+  "success": true,
+  "message": "Category created successfully",
+  "data": { "id": "uuid" }
+}</pre>
+
+<h3>الـ Business Logic:</h3>
+<ul>
+  <li>إنشاء الكاتيجوري <strong>وربطها بالبراند</strong> (<code>brandId</code>).</li>
+  <li>Side effects: <strong>none</strong> — مفيش حاجة تانية بتتغير في النظام.</li>
+</ul>
+
+<div class="box">
+<strong>نقطة مهمة هتفرق في الكود:</strong> التاسك بيقول الـ endpoint هو <code>/brands/{brandId}/categories</code>. في المشروع، الـ <code>brandRouter</code> مركّب على <code>/api/v1/brands</code> في <code>server.ts:27</code>. يعني أحسن مكان للـ route ده هو ملف <code>brand.routes.ts</code> عشان الـ URL يطلع صح بالظبط زي التاسك. لو حطيناه في <code>category.routes.ts</code> (المركّب على <code>/api/v1/categories</code>) هيطلع <code>POST /api/v1/categories/:brandId/categories</code> — شكل وحش ومش زي التاسك.
+</div>
+
+<h2>2) المشروع والمشكلة المهمة في الـ Data Model أولاً 🚨</h2>
+
+<p>قبل ما نكتب أي كود، لازم نفهم حالة الـ <code>Category</code> في المشروع. فيه <strong>تعارض</strong> لازم نعرفه:</p>
+
+<div class="bad">
+<strong>تعارض بين الـ schema و الـ client المولّد:</strong><br>
+<ul>
+  <li>الـ <code>prisma/schema.prisma</code> الحالي (المفروض يمثل الداتابيز) عنده: <code>name @unique</code> + <code>description</code> + <strong>مفيش <code>brandId</code></strong>.</li>
+  <li>لكن الـ <code>src/generated/prisma/models/Category.ts</code> (الـ client المولّد اللي بيشتغل به الكود فعلاً) عنده: <code>brandId</code> + <code>imageUrl</code> + relation <code>brand</code> + unique مركب <code>brandId_name</code> + <strong>مفيش <code>description</code></strong>.</li>
+  <li>يعني الـ client المولّد متولّد من schema أحدث من الموجود في الملف، والملف الحالي متأخر عنه.</li>
+</ul>
+</div>
+
+<p>عشان التاسك يقول "Create category and link it to the brand" + "name must be unique within the brand"، فالموديل الصح هو اللي فيه <code>brandId</code> — وده اللي الـ client بيدعمه. فقبل ما نكتب الكود، <strong>لازم نحدّث الـ schema في <code>prisma/schema.prisma</code></strong> عشان يطابق اللي الكود هيستخدمه:</p>
+
+<h3 class="step">تحديث <span class="filepath">prisma/schema.prisma</span> — موديل Category الصحيح</h3>
+
+<pre>
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  brandId     String    @map("brand_id") @db.Uuid
+  name        String    @map("category_name")
+  imageUrl    String?   @map("image_url")
+  media       Json
+  ishidden    Boolean   @default(false)
+  Products    Product[]
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updateAt    DateTime  @default(now())
+
+  @@unique([brandId, name])   <span class="c">// نفس الاسم ممنوع يتكرر لنفس البراند — دي قاعدة التاسك</span>
+  @@map("categories")
+}
+</pre>
+
+<div class="warn">
+<strong>وبعدها تشغّل:</strong> <code>npx prisma generate</code> ثم <code>npx prisma migrate dev --name create_category_v2</code> عشان الجدول في الداتابيز يتحدث مع الـ client. (لو الـ client المولّد عندك ناقص عن ده، الـ generate هيجيله.)
+</div>
+
+<p>ملحوظة على الحقول اللي مش في التاسك: <code>media</code> حقل <code>Json</code> مطلوب في الـ schema، فهنمررله <code>{}</code>. و <code>ishidden</code> عنده default <code>false</code> فمش محتاجين نمرره.</p>
+
+<h2>3) هيكلة الكود — فين كل حاجة هتتحط</h2>
+
+<p>هنتبع نفس نمط الـ Layered Architecture بتاع المشروع، لكن مع قرار فين الـ route يتسجل:</p>
+
+<table>
+  <tr><th>المسؤولية</th><th>الملف</th><th>مكانه</th></tr>
+  <tr><td>استعلام الداتابيز (Prisma)</td><td><code>src/modules/category/category.model.ts</code></td><td>بنضيف عليه</td></tr>
+  <tr><td>الـ Business Logic (القرارات والأخطاء)</td><td><code>src/modules/category/category.service.ts</code></td><td>بنضيف عليه</td></tr>
+  <tr><td>الـ Controller (استقبال ورد)</td><td><code>src/modules/category/category.controller.ts</code></td><td>بنضيف عليه</td></tr>
+  <tr><td>الـ Validation (Zod)</td><td><code>src/modules/category/category.validators.ts</code></td><td>نكتب فيه أول كود</td></tr>
+  <tr><td>الـ Route</td><td><code>src/modules/brand/brand.routes.ts</code></td><td>بنضيف عليه (عشان الـ URL يطابق التاسك)</td></tr>
+</table>
+
+<h2>4) التنفيذ خطوة بخطوة 🚀</h2>
+
+<p>نبدأ من أعمق طبقة (الـ model) ونطلع للـ route.</p>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.model.ts</span> — دالة الـ create</h3>
+
+<p>نضيف دالة <code>findByNameWithinBrand</code> (عشان نتأكد من قاعدة الـ uniqueness قبل الإنشاء) ودالة <code>create</code>:</p>
+
+<pre>
+import prisma from "../../config/database";
+
+class categoryModel {
+  <span class="c">// (جديد) فحص تكرار الاسم جوه البراند — قاعدة التاسك</span>
+  async findByNameWithinBrand(brandId: string, name: string) {
+    return prisma.category.findFirst({
+      where: { brandId, name },
+      select: { id: true },
+    });
+  }
+
+  <span class="c">// (جديد) إنشاء كاتيجوري مرتبطة بالبراند</span>
+  async create(brandId: string, name: string, imageUrl?: string) {
+    return prisma.category.create({
+      data: {
+        brandId,                          <span class="c">// الربط بالبراند</span>
+        name,
+        media: {},                        <span class="c">// Json مطلوب في الـ schema</span>
+        ...(imageUrl ? { imageUrl } : {}), <span class="c">// اختياري: نحطه بس لو اتبعت</span>
+      },
+      select: { id: true },               <span class="c">// نرجع الـ id بس زي التاسك</span>
+    });
+  }
+
+  <span class="c">// موجودة قبل كده (بتاعة الـ getCategories)</span>
+  async getCategories(filter: { search: string; skip?: number; take?: number }) {
+    return await prisma.category.findMany({ <span class="c">/* ... */</span> });
+  }
+}
+
+export const category = new categoryModel();
+</pre>
+
+<p><strong>شرح:</strong></p>
+<ul>
+  <li><code>findByNameWithinBrand</code>: لو رجع نتيجة → الاسم موجود لنفس البراند → لازم نمنع الإنشاء (دي قاعدة التاسك).</li>
+  <li><code>create</code>: بنمرر <code>brandId</code> في الـ data مباشرة — ده هو "Create category and link it to the brand" حرفيًا.</li>
+  <li>استخدمنا <code>...(imageUrl ? { imageUrl } : {})</code> لأن الـ <code>imageUrl</code> اختياري — لو مش متبعت، الحقل ميتكتبش.</li>
+  <li>باستخدام <code>select: { id: true }</code> بناخد بس الـ id اللي التاسك طالبه في الـ response.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.service.ts</span> — الـ Business Logic</h3>
+
+<p>نضيف ميثود <code>createCategory</code> وفيها كل القرارات والأخطاء:</p>
+
+<pre>
+import { category } from "./category.model";
+import { brandModel } from "../brand/brand.model";
+import AppError from "../../shared/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+
+class CategoryService {
+  <span class="c">// (جديد) إنشاء كاتيجوري</span>
+  async createCategory(brandId: string, userId: string, role: string, name: string, imageUrl?: string) {
+    <span class="c">// 1) البراند موجود؟</span>
+    const brand = await brandModel.findBrandById(brandId);
+    if (!brand) {
+      throw new AppError("Brand not found", StatusCodes.NOT_FOUND);
+    }
+
+    <span class="c">// 2) المستخدم صاحب البراند ده أو admin؟</span>
+    if (brand.userId !== userId && role !== "admin") {
+      throw new AppError(
+        "You are not authorized to create a category for this brand",
+        StatusCodes.FORBIDDEN,
+      );
+    }
+
+    <span class="c">// 3) الاسم فريد جوه البراند؟ (قاعدة التاسك)</span>
+    const existing = await category.findByNameWithinBrand(brandId, name);
+    if (existing) {
+      throw new AppError(
+        "Category name already exists in this brand",
+        StatusCodes.CONFLICT,
+      );
+    }
+
+    <span class="c">// 4) الإنشاء الفعلي</span>
+    const created = await category.create(brandId, name, imageUrl);
+    if (!created) {
+      throw new AppError(
+        "Category creation failed",
+        StatusCodes.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    return { id: created.id };
+  }
+
+  <span class="c">// موجودة قبل كده</span>
+  async getCategories(filter: { search: string; skip?: number; take?: number }) {
+    return await category.getCategories(filter);
+  }
+}
+
+export const categoryService = new CategoryService();
+</pre>
+
+<p><strong>شرح كل خطوة:</strong></p>
+<ul>
+  <li><strong>الخطوة 1:</strong> لو الـ <code>brandId</code> مبيشاور على براند موجود → <code>404 Not Found</code>.</li>
+  <li><strong>الخطوة 2:</strong> تأكيد الملكية — بنقارن <code>brand.userId</code> بالـ <code>userId</code> الجاي من الـ token، وبنسمح للـ <code>admin</code>. نفس النمط بالظبط المستخدم في <code>brand.service.ts:92</code> و <code>brand.service.ts:167</code>. لو مش مالك → <code>403 Forbidden</code>. <span class="bad">دي أساسية لأن الـ authorize middleware بيأكد "الـ role brand" بس، لكن مش بيأكد "ده البراند بتاعك".</span></li>
+  <li><strong>الخطوة 3:</strong> قبل الإنشاء بنفحص الـ uniqueness — لو الاسم موجود لنفس البراند → <code>409 Conflict</code>. دي قاعدة التاسك بالظبط.</li>
+  <li><strong>الخطوة 4:</strong> إنشاء + لو حصل فشل غريب → <code>500 Internal Server Error</code> (زي ما التاسك طالب في الـ Error Responses).</li>
+</ul>
+
+<div class="box">
+<strong>ليه بنفحص الـ uniqueness يدويًا رغم وجود <code>@@unique([brandId, name])</code>؟</strong> الـ constraint في الداتابيز حماية أمان (شبكة أمان)، لكن لو اتخبطنا فيه هنجيب خطأ Prisma خام (P2002) مش هيكون له شكل لطيف. الفحص اليدوي بيدينا رسالة واضحة + <code>409 Conflict</code> بطريقة نظيفة. الأثنين ماشيين مع بعض.
+</div>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/category/category.controller.ts</span> — الـ Controller</h3>
+
+<p>نضيف الـ controller اللي بياخد الـ params والـ body ويستدعي الـ service:</p>
+
+<pre>
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import { asyncHandler } from "../../shared/utils/asyncHandler";
+import { categoryService } from "./category.service";
+import AppError from "../../shared/errors/AppError";
+
+<span class="c">// (جديد) إنشاء كاتيجوري</span>
+export const createCategory = asyncHandler(async (req: Request, res: Response) => {
+  const { brandId } = req.params as { brandId: string };
+  const { name, imageUrl } = req.body as { name: string; imageUrl?: string };
+  const user = (req as any).user;
+
+  if (!user?.id) {
+    throw new AppError("Not authenticated", StatusCodes.UNAUTHORIZED);
+  }
+
+  const result = await categoryService.createCategory(
+    brandId,
+    user.id,
+    user.role,
+    name,
+    imageUrl,
+  );
+
+  res.status(StatusCodes.CREATED).json({
+    success: true,
+    message: "Category created successfully",
+    data: result,
+  });
+});
+
+<span class="c">// موجودة قبل كده (بتاعة الـ getCategories)</span>
+export const getCategories = asyncHandler(async (req: Request, res: Response) => { <span class="c">/* ... */</span> });
+</pre>
+
+<p><strong>شرح:</strong></p>
+<ul>
+  <li><code>brandId</code> جاي من الـ <code>req.params</code> (جزء من الـ URL).</li>
+  <li><code>name</code> و <code>imageUrl</code> جايين من <code>req.body</code>.</li>
+  <li>الـ user جاي من الـ <code>authenticate</code> middleware اللي حطه في <code>req.user</code>.</li>
+  <li>الـ Response: <code>201 Created</code> بنفس الـ shape المطلوب في التاسك بالظبط.</li>
+</ul>
+
+<h3 class="step">كتابة <span class="filepath">src/modules/category/category.validators.ts</span> — الـ Validation بـ Zod</h3>
+
+<p>الملف ده كان فاضي — ده أول كود فيه. بنستخدم <code>validate</code> middleware اللي موجود في <code>src/shared/middleware/validate.ts</code> واللي بيدمج <code>body + query + params</code> كلهم في schema واحد:</p>
+
+<pre>
+import { z } from "zod";
+
+export const createCategorySchema = z.object({
+  brandId: z.string().uuid({ message: "Invalid brand ID format" }),
+  name: z
+    .string()
+    .min(1, "Category name is required")
+    .max(50, "Category name must be at most 50 characters"),
+  imageUrl: z.string().url("Invalid image URL format").optional(),
+});
+</pre>
+
+<p><strong>شرح:</strong></p>
+<ul>
+  <li><code>brandId</code>: مش في الـ body — في الـ URL، لكن لأن الـ <code>validate</code> بيمرج الـ params مع الباقي، فبيدخل في نفس الـ schema (بمطابقة <code>uuid</code>).</li>
+  <li><code>name</code>: <strong>مطلوب</strong> وغير فاضي (زي التاسك).</li>
+  <li><code>imageUrl</code>: اختياري + لازم يكون URL صحيح.</li>
+  <li>لو أي حاجة غلط → الـ middleware بيرمي <code>400 Validation Error</code> بأول رسالة.</li>
+</ul>
+
+<h3 class="step">تعديل <span class="filepath">src/modules/brand/brand.routes.ts</span> — تسجيل الـ Route</h3>
+
+<p>هنا بنضيف الـ route الجديد داخل ملف الـ brand routes عشان الـ URL يطابق التاسك (<code>/api/v1/brands/:brandId/categories</code>):</p>
+
+<pre>
+import { Router } from "express";
+import { validate } from "../../shared/middleware/validate";
+import authenticate from "../../shared/middleware/authenticate";
+import { authorize } from "../../shared/middleware/authorize";
+import { createBrand, updateBrandProfile, <span class="c">/* ... */</span> } from "./brand.controller";
+import { createBrandSchema, updateBrandProfileSchema, <span class="c">/* ... */</span> } from "./brand.validators";
+<span class="c">// استيراد من موديول الكاتيجوري</span>
+import { createCategory } from "../category/category.controller";
+import { createCategorySchema } from "../category/category.validators";
+
+const router = Router();
+router.use(authenticate);
+
+<span class="c">// ... الـ routes القديمة موجودة هنا ...</span>
+
+<span class="c">// (جديد) إنشاء كاتيجوري داخل براند — بيطابق POST /brands/{brandId}/categories</span>
+router.post(
+  "/:brandId/categories",
+  authorize("brand"),
+  validate(createCategorySchema),
+  createCategory,
+);
+
+export default router;
+</pre>
+
+<div class="warn">
+<strong>ترتيب الـ middlewares مهم:</strong>
+<ol>
+  <li><code>authenticate</code> شغال على كل الـ file بـ <code>router.use</code> (مش محتاج نعيده).</li>
+  <li><code>authorize("brand")</code>: يرفض أي حد مش براند بـ <code>403</code>.</li>
+  <li><code>validate(createCategorySchema)</code>: تحقق من المدخلات بـ <code>400</code>.</li>
+  <li><code>createCategory</code>: الـ controller بيكمل.</li>
+</ol>
+</div>
+
+<h3 class="step">تأكد إن الـ category module و الـ brand module مترابطين صح</h3>
+
+<p>الـ <code>category.service.ts</code> بيستورد <code>brandModel</code> من <code>../brand/brand.model</code> — وده موجود فعلًا ومستدعي في <code>brand.service.ts</code> كمان، فهيعمل import عادي من غير أي Circular dependency.</p>
+
+<h2>5) اختبار الـ Endpoint (Testing)</h2>
+
+<p>بعد ما تعمل <code>npx prisma generate</code> وتشغّل السيرفر، جرّب بـ Postman أو curl:</p>
+
+<pre>
+POST http://localhost:&lt;PORT&gt;/api/v1/brands/&lt;brandId&gt;/categories
+Authorization: Bearer &lt;token بتاع البراند&gt;
+Content-Type: application/json
+
+{
+  "name": "Women's Wear",
+  "imageUrl": "https://cdn.example.com/category.png"
+}
+</pre>
+
+<p><strong>الرد المتوقع (201):</strong></p>
+<pre>{
+  "success": true,
+  "message": "Category created successfully",
+  "data": { "id": "5f2a8e6c-3b11-4c5e-9d2a-1f0b3c4d5e6f" }
+}</pre>
+
+<p><strong>جرّب كمان الحالات دي:</strong></p>
+<ul>
+  <li>نفس الاسم تاني لنفس البراند → <code>409</code> "Category name already exists in this brand".</li>
+  <li>نفس الاسم بس لبراند مختلف → <code>201</code> (بينجح، لأن الـ uniqueness جوه البراند بس).</li>
+  <li>Token بتاع براند تاني → <code>403</code>.</li>
+  <li>بدون <code>name</code> → <code>400</code>.</li>
+  <li><code>brandId</code> مش UUID → <code>400</code>.</li>
+  <li>بدون token → <code>401</code>.</li>
+</ul>
+
+<h2>6) جدول الـ Error Codes</h2>
+
+<table>
+  <tr><th>الحالة</th><th>Status Code</th><th>سببها فين في الكود</th></tr>
+  <tr><td>Validation Error</td><td><code>400</code></td><td>Zod — name فاضي، imageUrl مش URL، brandId مش UUID</td></tr>
+  <tr><td>Unauthorized</td><td><code>401</code></td><td>authenticate — مفيش token أو token غير صالح</td></tr>
+  <tr><td>Forbidden</td><td><code>403</code></td><td>authorize (role مش brand) أو service (مش صاحب البراند)</td></tr>
+  <tr><td>Not Found</td><td><code>404</code></td><td>service — البراند مش موجود</td></tr>
+  <tr><td>Conflict</td><td><code>409</code></td><td>service — الاسم مكرر جوه نفس البراند</td></tr>
+  <tr><td>Internal Server Error</td><td><code>500</code></td><td>service — فشل الـ create</td></tr>
+</table>
+
+<h2>7) المخطط النهائي (Flow Diagram)</h2>
+
+<pre>
+الطلب:  POST /brands/{brandId}/categories
+           │
+           ▼
+    [1] authenticate ──── خطأ? ──▶ 401 Unauthorized
+           │
+           ▼
+    [2] authorize("brand") ── خطأ? ──▶ 403 Forbidden
+           │
+           ▼
+    [3] validate(createCategorySchema) ── خطأ? ──▶ 400 Validation Error
+           │
+           ▼
+    [4] createCategory (Controller)
+           │
+           ▼
+    [5] createCategory (Service)
+           │
+           ├── brand موجود? ───────────── لا ──▶ 404 Not Found
+           ├── brand.userId === userId أو admin? ── لا ──▶ 403 Forbidden
+           ├── name مكرر جوه البراند? ──── نعم ──▶ 409 Conflict
+           ▼
+    [6] category.create()  (Prisma INSERT مع brandId)
+           │
+           ▼
+    [7] 201 { success: true, message: "Category created successfully", data: { id } }
+</pre>
+
+<h2>8) ملخص سريع (Checklist)</h2>
+
+<ul>
+  <li>✅ حدّثت <code>schema.prisma</code> (أضفت <code>brandId</code> + <code>imageUrl</code> + <code>@@unique([brandId, name])</code>)</li>
+  <li>✅ شغّلت <code>npx prisma generate</code> (و <code>migrate dev</code> لو محتاج)</li>
+  <li>✅ أضفت <code>findByNameWithinBrand</code> + <code>create</code> في الـ model</li>
+  <li>✅ أضفت <code>createCategory</code> في الـ service (وجود البراند → الملكية → الـ uniqueness → الإنشاء)</li>
+  <li>✅ أضفت <code>createCategory</code> في الـ controller (يرد 201 بنفس شكل JSON المطلوب)</li>
+  <li>✅ كتبت <code>createCategorySchema</code> بـ Zod في الـ validators</li>
+  <li>✅ أضفت <code>router.post("/:brandId/categories", ...)</code> في brand.routes.ts عشان الـ URL يطابق التاسك</li>
+  <li>✅ كل الأخطاء عبر <code>AppError</code> → error handler الموحد في server.ts</li>
+</ul>
+
+<div class="box">
+<strong>خلاصة التنفيذ:</strong> 3 تعديلات في موديول الكاتيجوري (model + service + controller) + كتابة ملف الـ validators + سطر واحد في الـ brand.routes.ts. الكود كله بيتبع نفس نمط <code>createBrandDocument</code> و <code>updateBrandProfile</code> الموجودين في المشروع فعلاً.
+</div>
+
+</body>
+</html>

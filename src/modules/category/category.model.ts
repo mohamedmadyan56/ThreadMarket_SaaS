@@ -17,3 +17,4 @@ class categoryModel {
   }
 
 }
+export const category = new categoryModel();
